@@ -40,20 +40,22 @@ inline void clearLine(unsigned int spaces)
 #define ERR_DIR2  4 // tiles/TYPE/COLOR
 #define ERR_DIR3  5 // tiles/TYPE/COLOR/TILE
 #define ERR_DIR4  6 // tiles/TYPE/COLOR/TILE/EXPONENT
-#define ERR_DIR5  7 // tiles/TYPE/COLOR/TILE/EXPONENT/RES
-#define ERR_DIR6  8 // tiles/TYPE/COLOR/TILE/EXPONENT/RES/ITERATIONS
-#define ERR_DIR7  9 // tiles/TYPE/COLOR/TILE/EQUATION
-#define ERR_TOOB 10 // tile out of bounds
-#define ERR_NOEQ 11 // no equation given
-#define ERR_EQTN 12 // error parsing equation
+#define ERR_DIR5  7 // JA_JB
+#define ERR_DIR6  8 // tiles/TYPE/COLOR/TILE/EXPONENT/RES
+#define ERR_DIR7  9 // tiles/TYPE/COLOR/TILE/EXPONENT/RES/ITERATIONS
+#define ERR_DIR8 10 // tiles/TYPE/COLOR/TILE/EQUATION
+#define ERR_TOOB 11 // tile out of bounds
+#define ERR_NOEQ 12 // no equation given
+#define ERR_EQTN 13 // error parsing equation
 
 enum FractalType
 {
 	mandelbrot,
 	julia,
 	burning_ship,
-	triforce,
+	tricorn,
 	neuron,
+	stupidbrot,
 	experiment
 };
 
@@ -512,13 +514,29 @@ void createFractal(bool tile)
 							{
 								Z = lepow(complex<double>(abs(real(Z)), abs(imag(Z))), exponent) + c;
 							}
-							else if(type == triforce)
+							else if(type == tricorn)
 							{
 								Z = lepow(complex<double>(imag(Z), real(Z)), exponent) + c;
 							}
 							else if(type == neuron)
 							{
 								Z = lepow(complex<double>(imag(Z), real(Z)), exponent) + Z;
+							}
+							else if(type == stupidbrot)
+							{
+								Z = lepow(Z, exponent);
+								if(n % 2 == 0)
+								{
+									Z = Z + c;
+								}
+								else
+								{
+									Z = Z - c;
+								}
+							}
+							else if(type == experiment)
+							{
+								Z = lepow(c, exponent) + Z;
 							}
 							if(pn == Z)
 							{
@@ -593,7 +611,7 @@ int main(int argc, char** argv)
 		cout << "                           mandelbrot\n";
 		cout << "                           julia\n";
 		cout << "                           burning_ship\n";
-		cout << "                           triforce\n";
+		cout << "                           tricorn\n";
 		cout << "                           neuron\n";
 		cout << " -ja or --juliaA      [d] The real part of c (for julia only)\n";
 		cout << " -jb or --juliaB      [d] The imaginary part of c (for julia only)\n";
@@ -642,15 +660,20 @@ int main(int argc, char** argv)
 					type = burning_ship;
 					typeString = "Burning Ship";
 				}
-				else if(strcasecmp(value.c_str(), "triforce") == 0)
+				else if(strcasecmp(value.c_str(), "tricorn") == 0)
 				{
-					type = triforce;
-					typeString = "Triforce";
+					type = tricorn;
+					typeString = "Tricorn";
 				}
 				else if(strcasecmp(value.c_str(), "neuron") == 0)
 				{
 					type = neuron;
 					typeString = "Neuron";
+				}
+				else if(strcasecmp(value.c_str(), "stupidbrot") == 0)
+				{
+					type = stupidbrot;
+					typeString = "Stupidbrot";
 				}
 				else if(strcasecmp(value.c_str(), "experiment") == 0)
 				{
@@ -812,7 +835,12 @@ int main(int argc, char** argv)
 				return ERR_DIR3;
 			}
 		}
-		ss << "/" << exponent;
+		ss << "/";
+		if(negative)
+		{
+			ss << "-";
+		}
+		ss << exponent;
 		path = ss.str();
 		if(mkdir(path.c_str(), MODE) != 0)
 		{
@@ -822,6 +850,21 @@ int main(int argc, char** argv)
 				return ERR_DIR4;
 			}
 		}
+
+		if(type == julia)
+		{
+			ss << "/" << juliaA << "_" << juliaB;
+			path = ss.str();
+			if(mkdir(path.c_str(), MODE) !=0)
+			{
+				if(errno != EEXIST)
+				{
+					cout << strerror(errno) << "\n";
+					return ERR_DIR5;
+				}
+			}
+		}
+
 		ss << "/" << fractalRes;
 		path = ss.str();
 		if(mkdir(path.c_str(), MODE) !=0)
@@ -829,7 +872,7 @@ int main(int argc, char** argv)
 			if(errno != EEXIST)
 			{
 				cout << strerror(errno) << "\n";
-				return ERR_DIR5;
+				return ERR_DIR6;
 			}
 		}
 		ss << "/" << iterations;
@@ -839,7 +882,7 @@ int main(int argc, char** argv)
 			if(errno != EEXIST)
 			{
 				cout << strerror(errno) << "\n";
-				return ERR_DIR6;
+				return ERR_DIR7;
 			}
 		}
 	}
@@ -866,7 +909,7 @@ int main(int argc, char** argv)
 			if(errno != EEXIST)
 			{
 				cout << strerror(errno) << "\n";
-				return ERR_DIR7;
+				return ERR_DIR8;
 			}
 		}
 	}
@@ -919,7 +962,12 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		ss << TILE << "/" << exponent << "/" << fractalRes << "/" << iterations << "/" << tileX << "x" << tileY;
+		ss << TILE << "/" << exponent;
+		if(type == julia)
+		{
+			ss << "/" << juliaA << "_" << juliaB;
+		}
+		ss << "/" << fractalRes << "/" << iterations << "/" << tileX << "x" << tileY;
 	}
 	ss << ".png";
 	imgPath = ss.str();
