@@ -38,7 +38,6 @@
 		</Compiler>
 		<Linker>
 			<Add option="-lpng" />
-			<Add option="-lgmp" />
 		</Linker>
 		<Unit filename="main.cpp" />
 		<Extensions>
