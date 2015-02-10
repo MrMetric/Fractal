@@ -461,8 +461,6 @@ const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks Z, kompleks c
 			//red = floor(abs(Z.imag - Z.real) * 8 + 0.5);
 			//green = floor(abs(lenorm(Z)) * 4 + 0.5);
 
-			//kompleks_type Zr = Z.real;
-			//kompleks_type Zi = Z.imag;
 			red = Zr2;
 			green = Zr2 * Zi2;
 			blue = Zi2;
@@ -605,7 +603,7 @@ kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
 	}
 	if(type == dots)
 	{
-		return (Z^exponent) / c;
+		return (Z^exponent) * c.reciprocal(); // equivalent to & faster than: (Z^exponent) / c
 	}
 	if(type == magnet1)
 	{
@@ -900,16 +898,8 @@ void show_help()
 	std::cout << "                 dots\n";
 	std::cout << " -jx        [d] The real part of c (for julia only)\n";
 	std::cout << " -jy        [d] The imaginary part of c (for julia only)\n";
-	std::cout << " -c         [i] The coloring method to use. Available values:\n";
-	std::cout << "                 0 - gold (escape time)\n";
-	std::cout << "                 1 - green (escape time) with red/blue crap\n";
-	std::cout << "                 2 - green/orange crap with blue laser things\n";
-	std::cout << "                 3 - red/blue crap with green laser thingies\n";
-	std::cout << "                 4 - weird white and black crap\n";
-	std::cout << "                 5 - glowing (green)\n";
-	std::cout << "                 6 - glowing (pink)\n";
-	std::cout << "                 7 - glowing (blue)\n";
-	std::cout << "                 8 - pinkish XOR\n";
+	std::cout << " -c         [i] The coloring method to use (default = 0):\n";
+	std::cout << " -colors        List coloring methods\n";
 	std::cout << " -df            Disable fancy coloring for method 1\n";
 	std::cout << " -cm        [d] Color multiplier";
 	std::cout << " -r         [i] Picture size (width and height)\n";
@@ -918,6 +908,28 @@ void show_help()
 	std::cout << " -el        [d] Escape limit (default = 4)\n";
 	std::cout << "\n";
 	std::cout << "If an invalid value is specified, the default will be used. For the filters, the value you specify is how many iterations are run before the filter starts checking points.\n";
+}
+
+void show_colors()
+{
+	std::cout << "Coloring methods:\n";
+	std::cout << "          0 - gold (escape time)\n";
+	std::cout << "          1 - green (escape time) with red/blue crap\n";
+	std::cout << "          2 - green/orange crap with blue laser things\n";
+	std::cout << "          3 - red/blue crap with green laser thingies\n";
+	std::cout << "          4 - weird white and black crap\n";
+	std::cout << "          5 - glowing (green)\n";
+	std::cout << "          6 - glowing (pink)\n";
+	std::cout << "          7 - glowing (blue)\n";
+	std::cout << "          8 - pinkish XOR (might need -cm)\n";
+	std::cout << "          9 - weird XOR stuff with lots of stripes\n";
+	std::cout << "         10 - ugly pink thing\n";
+	std::cout << "         11 - ugly green thing\n";
+	std::cout << "         12 - black (set) and white (background)\n";
+	std::cout << "         13 - purple (escape time)\n";
+	std::cout << "         14 - random (escape time)\n";
+	std::cout << "         15 - hue (escape time)\n";
+	std::cout << "         16 - oversaturated orange/yellow (escape time) with blue crap\n";
 }
 
 int main(int argc, char** argv)
@@ -933,6 +945,11 @@ int main(int argc, char** argv)
 		show_help();
 		return 0;
 	}
+	if(firstArg == "-colors")
+	{
+		show_colors();
+		return 0;
+	}
 
 	ArgParser argp;
 	argp.add("-df", false);
@@ -944,8 +961,8 @@ int main(int argc, char** argv)
 	argp.add("-e", 2.0);
 	argp.add("-el", 4.0);
 	argp.add("-i", 1024);
-	argp.add("-ja", -0.8);
-	argp.add("-jb", 0.156);
+	argp.add("-jx", -0.8);
+	argp.add("-jy", 0.156);
 	argp.add("-pc", 1);
 	argp.add("-r", 1024);
 	argp.add("-t", "mandelbrot");
@@ -976,8 +993,8 @@ int main(int argc, char** argv)
 	exponent = argp.get_double("-e");
 	escapeLimit = argp.get_double("-el");
 	max_iterations = argp.get_int("-i");
-	double juliaA = argp.get_double("-ja");
-	double juliaB = argp.get_double("-jb");
+	double juliaA = argp.get_double("-jx");
+	double juliaB = argp.get_double("-jy");
 	pCheck = argp.get_int("-pc");
 	width_px = height_px = argp.get_int("-r");
 	try
