@@ -382,12 +382,10 @@ const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks Z, kompleks c
 		}
 		case 9:
 		{
-			uint_fast64_t red_fractal = n << 1,
-						  green_fractal = n,
-						  blue_fractal = n >> 1;
-			if(red_fractal > 255) red_fractal = 255;
-			if(green_fractal > 255) green_fractal = 255;
-			if(blue_fractal > 255) blue_fractal = 255;
+			png::rgb_pixel color_fractal = getColor(0, Z, c, n);
+			uint_fast64_t red_fractal = color_fractal.red,
+						  green_fractal = color_fractal.green,
+						  blue_fractal = color_fractal.blue;
 
 			red = (uint_fast64_t)floor(Zr2*8 + 0.5) ^ (uint_fast64_t)floor(Zi2*8 + 0.5);
 			green = (uint_fast64_t)floor(Zr2*2 + 0.5) ^ (uint_fast64_t)floor(Zi2*2 + 0.5);
@@ -423,6 +421,10 @@ const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks Z, kompleks c
 			if(blue > 255) blue = blue % 255;
 			if(green_stripe > 255) green_stripe = green_stripe % 255;
 			if(blue_stripe > 255) blue_stripe = blue_stripe % 255;*/
+
+			red *= colorMul;
+			green *= colorMul;
+			blue *= colorMul;
 
 			if(red > 255) red = 255;
 			if(green > 255) green = 255;
@@ -518,7 +520,7 @@ const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks Z, kompleks c
 		}
 	}
 
-	if(colorMul != 1)
+	if(colorMul != 1 && color_method != 9)
 	{
 		red *= colorMul;
 		green *= colorMul;
@@ -575,7 +577,7 @@ kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
 		return (Z.swap_xy()^exponent) + Z;
 
 		// this formula matches the tricorn; use this to get unrotated images
-		//return (kompleks(Z.real, -Z.imag)^exponent) + Z;
+		//return (Z.conjugate()^exponent) + Z;
 	}
 	if(type == clouds || type == oops)
 	{
