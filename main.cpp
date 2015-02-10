@@ -40,6 +40,7 @@ enum FractalType
 	tricorn,
 	neuron,
 	clouds,
+	oops,
 	stupidbrot,
 	untitled1,
 	dots,
@@ -49,7 +50,7 @@ enum FractalType
 };
 
 FractalType type = mandelbrot;
-std::string typeStrings[13] =
+std::string typeStrings[] =
 {
 	"Mandelbrot",
 	"Julia",
@@ -58,6 +59,7 @@ std::string typeStrings[13] =
 	"Tricorn",
 	"Neuron",
 	"Clouds",
+	"Oops",
 	"Stupidbrot",
 	"Untitled 1",
 	"Dots",
@@ -97,6 +99,10 @@ FractalType string_to_fractal_type(const std::string& typestr)
 	if(strcasecmp(typestrc, "clouds") == 0)
 	{
 		return clouds;
+	}
+	if(strcasecmp(typestrc, "oops") == 0)
+	{
+		return oops;
 	}
 	if(strcasecmp(typestrc, "stupidbrot") == 0)
 	{
@@ -571,9 +577,8 @@ kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
 		// this formula matches the tricorn; use this to get unrotated images
 		//return (kompleks(Z.real, -Z.imag)^exponent) + Z;
 	}
-	if(type == clouds)
+	if(type == clouds || type == oops)
 	{
-		// TODO: this donuts work
 		kompleks new_z = (Z.swap_xy()^exponent) + c;
 		c = Z;
 		return new_z;
@@ -697,7 +702,12 @@ void createFractal(
 			}
 			else
 			{
-				kompleks Z(x, y);
+				kompleks Z;
+				if(type != clouds) // clouds must start at 0; forgetting this resulted in oops
+				{
+					Z.real = x;
+					Z.imag = y;
+				}
 				if(type == julia || type == julia2)
 				{
 					c = kompleks(juliaA, juliaB);
@@ -706,12 +716,12 @@ void createFractal(
 				{
 					c = kompleks(x, y);
 				}
-				kompleks pn(x, y); // previous iteration
+
 				// TODO: Finish implementing this
 				kompleks pCheckArray[pCheck];
 				for(uint_fast32_t p = 0; p < pCheck; ++p)
 				{
-					pCheckArray[p] = kompleks(x, y);
+					pCheckArray[p] = Z;
 				}
 
 				for(uint_fast64_t n = 0; n <= max_iterations; ++n)
