@@ -5,21 +5,16 @@
 #include <fstream>
 #include <algorithm>
 #include <cmath>
-#include <complex>
+#include "kompleks.hpp"
 #include <cstdlib>
 #include <ctime>
 #include <cerrno>
 #include <strings.h>
 #include <signal.h>
+#include <cstring>
 #include <png++/png.hpp>
-#define exprtk_lean_and_mean
-//#include <exprtk.hpp>
-
-//#define USE_GMP
-
-#ifdef USE_GMP
-#include <gmp.h>
-#endif
+#include <exception>
+#include "ArgParser.hpp"
 
 #include <stdint.h>
 
@@ -38,30 +33,15 @@ inline void clearLine(uint_fast32_t spaces)
 
 #define PI 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679L
 
-#define TILE 512
-
-#define MODE 0777
-#define ERR_ARGS  1 // invalid argument(s)
-#define ERR_DIR0  2 // tiles
-#define ERR_DIR1  3 // tiles/TYPE
-#define ERR_DIR2  4 // tiles/TYPE/COLOR
-#define ERR_DIR3  5 // tiles/TYPE/COLOR/TILE
-#define ERR_DIR4  6 // tiles/TYPE/COLOR/TILE/EXPONENT
-#define ERR_DIR5  7 // JA_JB
-#define ERR_DIR6  8 // tiles/TYPE/COLOR/TILE/EXPONENT/RES
-#define ERR_DIR7  9 // tiles/TYPE/COLOR/TILE/EXPONENT/RES/ITERATIONS
-#define ERR_DIR8 10 // tiles/TYPE/COLOR/TILE/EQUATION
-#define ERR_TOOB 11 // tile out of bounds
-#define ERR_NOEQ 12 // no equation given
-#define ERR_EQTN 13 // error parsing equation
-
 enum FractalType
 {
 	mandelbrot,
 	julia,
+	julia2,
 	burning_ship,
 	tricorn,
 	neuron,
+	clouds,
 	stupidbrot,
 	untitled1,
 	dots,
@@ -71,13 +51,15 @@ enum FractalType
 };
 
 FractalType type = mandelbrot;
-std::string typeStrings[11] =
+std::string typeStrings[13] =
 {
 	"Mandelbrot",
 	"Julia",
+	"Julia2",
 	"Burning Ship",
 	"Tricorn",
 	"Neuron",
+	"Clouds",
 	"Stupidbrot",
 	"Untitled 1",
 	"Dots",
@@ -86,112 +68,87 @@ std::string typeStrings[11] =
 	"Experiment"
 };
 
-enum FractalPlane
+FractalType string_to_fractal_type(const std::string& typestr)
 {
-	mu,
-	lambda
-};
+	const char* typestrc = typestr.c_str();
 
-FractalPlane plane = mu;
-std::string planeStrings[2] =
-{
-	"mu",
-	"lambda"
-};
-
-long double juliaA = -0.8L;
-long double juliaB = 0.156L;
-uint_fast32_t colorMethod = 0;
-uint_fast32_t fractalRes = 512;
-uint_fast32_t iterations = 1024;
-uint_fast32_t tileX = 0;
-uint_fast32_t tileY = 0;
-uint_fast32_t exponent = 2;
-long double exponentD = 2;
-std::complex<long double> exponentC(exponentD, 0);
-bool negative = false;
-bool smooth = false;
-bool filter1 = false;
-uint_fast32_t filter1T = 512;
-bool filter2 = false;
-uint_fast32_t filter2T = 512;
-bool disableFancy = false;
-long double escapeLimit = 4;
-bool single = false;
-long double colorMul = 1;
-bool wallpaper = false;
-long double wallpaperScale = 1;
-uint_fast32_t wallpaperW = 1600;
-uint_fast32_t wallpaperH = 900;
-uint_fast32_t pCheck = 1; // periodicity checking
-long double scale = 4;
-
-std::complex<long double> c_1(1, 0);
-std::complex<long double> c_2(2, 0);
-
-std::complex<long double> lepow(std::complex<long double> base, uint_fast32_t e)
-{
-	if(exponentD != 2)
+	if(strcasecmp(typestrc, "mandelbrot") == 0)
 	{
-		return pow(base, exponentC);
+		return mandelbrot;
 	}
-
-	if(e == 0)
+	if(strcasecmp(typestrc, "julia") == 0)
 	{
-		return std::complex<long double>(1, 0);
+		return julia;
 	}
-	else if(e == 1)
+	if(strcasecmp(typestrc, "julia2") == 0)
 	{
-		return base;
+		return julia2;
 	}
-	std::complex<long double> out = base;
-	for(uint_fast32_t i = 1; i < e; ++i)
+	if(strcasecmp(typestrc, "burning_ship") == 0)
 	{
-		out *= base;
+		return burning_ship;
 	}
-	if(negative)
+	if(strcasecmp(typestrc, "tricorn") == 0)
 	{
-		out = c_1 / out;
+		return tricorn;
 	}
-	return out;
+	if(strcasecmp(typestrc, "neuron") == 0)
+	{
+		return neuron;
+	}
+	if(strcasecmp(typestrc, "clouds") == 0)
+	{
+		return clouds;
+	}
+	if(strcasecmp(typestrc, "stupidbrot") == 0)
+	{
+		return stupidbrot;
+	}
+	if(strcasecmp(typestrc, "untitled1") == 0)
+	{
+		return untitled1;
+	}
+	if(strcasecmp(typestrc, "dots") == 0)
+	{
+		return dots;
+	}
+	if(strcasecmp(typestrc, "magnet1") == 0)
+	{
+		return magnet1;
+	}
+	if(strcasecmp(typestrc, "experiment") == 0)
+	{
+		return experiment;
+	}
+	throw std::runtime_error("Unknown fractal type: " + typestr);
 }
 
-//long double Zr;
-//long double Zi;
-long double Zr2;
-long double Zi2;
+uint_fast32_t width_px = 512;
+uint_fast32_t height_px = 512;
+uint_fast32_t max_iterations = 1024;
+kompleks_type exponent = 2;
+bool smooth = false;
+bool disableFancy = false;
+kompleks_type escapeLimit = 4;
+bool single = false;
+kompleks_type colorMul = 1;
+uint_fast32_t pCheck = 1; // periodicity checking
+
+kompleks c_1(1, 0);
+kompleks c_2(2, 0);
+
+//kompleks_type Zr;
+//kompleks_type Zi;
+kompleks_type Zr2;
+kompleks_type Zi2;
 uint_fast32_t n;
 
 std::string imgPath = "";
-//std::string path2;
-
-// modified from http://lolengine.net/blog/2013/01/13/fast-rgb-to-hsv
-void RGB2HSV(long double r, long double g, long double b, long double &h, long double &s, long double &v)
-{
-	long double K = 0.f;
-
-	if(g < b)
-	{
-		std::swap(g, b);
-		K = -1.f;
-	}
-
-	if(r < g)
-	{
-		std::swap(r, g);
-		K = -2.f / 6.f - K;
-	}
-
-	long double chroma = r - std::min(g, b);
-	h = abs(K + (g - b) / (6.f * chroma + 1e-20f));
-	s = chroma / (r + 1e-20f);
-	v = r;
-}
 
 #define HSVMODE 1
-void SetHSV(long double h, long double s, long double v, uint_fast8_t color[3])
+void SetHSV(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t color[3])
 {
-	long double r = 0, g = 0, b = 0;
+	kompleks_type r = 0, g = 0, b = 0;
 	if(s == 0)
 	{
 		r = g = b = v;
@@ -203,7 +160,7 @@ void SetHSV(long double h, long double s, long double v, uint_fast8_t color[3])
 		{
 			h = 0;
 		}
-		long double z = floor(h * 6);
+		kompleks_type z = floor(h * 6);
 		int_fast32_t i = int(z);
 		double f = double(h * 6 - z);
 		#elif(HSVMODE == 2)
@@ -212,9 +169,9 @@ void SetHSV(long double h, long double s, long double v, uint_fast8_t color[3])
 		double f = h - i;
 		#endif
 
-		long double p = v * (1 - s);
-		long double q = v * (1 - s * f);
-		long double t = v * (1 - s * (1 - f));
+		kompleks_type p = v * (1 - s);
+		kompleks_type q = v * (1 - s * f);
+		kompleks_type t = v * (1 - s * (1 - f));
 
 		switch(i)
 		{
@@ -262,35 +219,48 @@ void SetHSV(long double h, long double s, long double v, uint_fast8_t color[3])
 	color[2] = c;
 }
 
-std::complex<long double>iterate(std::complex<long double> Z, std::complex<long double> c)
+kompleks iterate(kompleks Z, kompleks& c)
 {
 	if(type == mandelbrot || type == julia)
 	{
-		Z = lepow(Z, exponent) + c;
+		return (Z^exponent) + c;
 	}
-	else if(type == burning_ship)
+	if(type == julia2)
 	{
-		Z = lepow(std::complex<long double>(abs(real(Z)), abs(imag(Z))), exponent) + c;
+		return sqrt(std_sinh(Z^exponent).to_std()) + c;
 	}
-	else if(type == tricorn)
+	if(type == burning_ship)
+	{
+		kompleks_type real_abs = abs(Z.real);
+		kompleks_type imag_abs = abs(Z.imag);
+		return (kompleks(real_abs, imag_abs)^exponent) + c;
+	}
+	if(type == tricorn)
 	{
 		// this formula shows it flipped horizontally
-		//Z = lepow(std::complex<long double>(imag(Z), real(Z)), exponent) + c;
+		//return (Z.swap_xy()^exponent) + c;
 
 		// this formula is the one given on Wikipedia
-		Z = lepow(std::complex<long double>(real(Z), -imag(Z)), exponent) + c;
+		return (Z.conjugate()^exponent) + c;
 	}
-	else if(type == neuron)
+	if(type == neuron)
 	{
 		// original flipped formula; higher exponents are rotated slightly
-		Z = lepow(std::complex<long double>(imag(Z), real(Z)), exponent) + Z;
+		return (Z.swap_xy()^exponent) + Z;
 
 		// this formula matches the tricorn; use this to get unrotated images
-		//Z = lepow(std::complex<long double>(real(Z), -imag(Z)), exponent) + Z;
+		//return (kompleks(Z.real, -Z.imag)^exponent) + Z;
 	}
-	else if(type == stupidbrot)
+	if(type == clouds)
 	{
-		Z = lepow(Z, exponent);
+		// TODO: this donuts work
+		kompleks new_z = (Z.swap_xy()^exponent) + c;
+		c = Z;
+		return new_z;
+	}
+	if(type == stupidbrot)
+	{
+		Z = (Z^exponent);
 		if(n % 2 == 0)
 		{
 			Z = Z + c;
@@ -299,38 +269,41 @@ std::complex<long double>iterate(std::complex<long double> Z, std::complex<long 
 		{
 			Z = Z - c;
 		}
+		return Z;
 	}
-	else if(type == untitled1)
+	if(type == untitled1)
 	{
-		Z = pow(Z, Z) + Z;
+		std::complex<kompleks_type> Z_std = pow(Z.to_std(), Z.to_std());
+		return kompleks(Z_std) + Z;
 	}
-	else if(type == dots)
+	if(type == dots)
 	{
-		Z = lepow(Z, exponent) / c;
+		return (Z^exponent) / c;
 	}
-	else if(type == magnet1)
+	if(type == magnet1)
 	{
-		Z = lepow((lepow(Z, 2) + (c - c_1)) / (Z * c_2 + (c - c_2)), 2);
+		return (((Z^2) + (c - c_1)) / (Z * c_2 + (c - c_2))) ^ 2;
 	}
-	else if(type == experiment)
+	if(type == experiment)
 	{
-		//Z = lepow(c, exponent) + Z;
+		//return lepow(c, exponent) + Z;
 
 		// diagonal line
-		//Z = std::complex<long double>(imag(Z), real(Z)) + c;
+		//return kompleks(Z.imag, Z.real) + c;
 
-		//Z = lepow(Z, exponent + 1) + lepow(Z, exponent) + c;
-		Z = lepow(Z, exponent) + c_1/c;
+		//return (Z^(exponent + 1)) + (Z^exponent) + c;
+		return (Z^exponent) + c_1/c;
 	}
+	// TODO: throw an exception
 	return Z;
 }
 
-uint_fast64_t red, green, blue;
-void getColor(std::complex<long double> c, std::complex<long double> Z)
+const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks c, kompleks Z)
 {
-	Zr2 = real(Z)*real(Z);
-	Zi2 = imag(Z)*imag(Z);
-	switch(colorMethod)
+	uint_fast64_t red, green, blue;
+	Zr2 = Z.real*Z.real;
+	Zi2 = Z.imag*Z.imag;
+	switch(color_method)
 	{
 		case 0: // escape time (gold)
 		{
@@ -339,14 +312,14 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 				/*Z = iterate(Z, c);
 				Z = iterate(Z, c);
 				n += 2;
-				long double newColor = (n - (log(log(abs(Z)))) / log(exponent));
+				kompleks_type newColor = (n - (log(log(Z.abs()))) / log(exponent));
 				red = floor(newColor * 2.0 + 0.5);
 				green = floor(newColor + 0.5);
 				blue = floor(newColor / 2.0 + 0.5);*/
 
 				// from http://www.hpdz.net/TechInfo/Colorizing.htm
-				long double dx = (log(log(escapeLimit)) - log(log(abs(Z)))) / log(exponent);
-				long double newColor = (n + 1 * dx);
+				kompleks_type dx = (log(log(escapeLimit)) - log(log(Z.abs()))) / log(exponent);
+				kompleks_type newColor = (n + 1 * dx);
 				red = floor(newColor * 2.0 + 0.5);
 				green = floor(newColor + 0.5);
 				blue = floor(newColor / 2.0 + 0.5);
@@ -377,9 +350,9 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 				/*Z = iterate(Z, c);
 				Z = iterate(Z, c);
 				n += 2;
-				green = floor((n - (log(log(abs(Z)))) / log((long double)exponent)) + 0.5);*/
+				green = floor((n - (log(log(Z.abs()))) / log((kompleks_type)exponent)) + 0.5);*/
 
-				long double dx = (log(log(escapeLimit)) - log(log(abs(Z)))) / log(exponent);
+				kompleks_type dx = (log(log(escapeLimit)) - log(log(Z.abs()))) / log(exponent);
 				green = floor((n + 1 * dx) + 0.5);
 			}
 			else
@@ -431,7 +404,7 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 		}
 		case 4: // Ben
 		{
-			red = green = blue = real(Z) * sin(imag(Z) + Zi2) - Zr2;
+			red = green = blue = Z.real * sin(Z.imag + Zi2) - Zr2;
 			break;
 		}
 		case 5: // Glow (Green)
@@ -621,11 +594,11 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 		}
 		case 11:
 		{
-			//red = floor(abs(imag(Z) - real(Z)) * 8 + 0.5);
-			//green = floor(abs(norm(Z)) * 4 + 0.5);
+			//red = floor(abs(Z.imag - Z.real) * 8 + 0.5);
+			//green = floor(abs(lenorm(Z)) * 4 + 0.5);
 
-			//long double Zr = real(Z);
-			//long double Zi = imag(Z);
+			//kompleks_type Zr = Z.real;
+			//kompleks_type Zi = Z.imag;
 			red = Zr2;
 			green = Zr2 * Zi2;
 			blue = Zi2;
@@ -654,9 +627,9 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 		case 14: // random; todo
 		{
 			srand(n);
-			red = rand() % 255 + 1;
-			green = rand() % 255 + 1;
-			blue = rand() % 255 + 1;
+			red = rand() & 0xFF;
+			green = rand() & 0xFF;
+			blue = rand() & 0xFF;
 			break;
 		}
 		case 15: // hue
@@ -666,6 +639,13 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 			red = colors[0];
 			green = colors[1];
 			blue = colors[2];
+			break;
+		}
+		case 16:
+		{
+			red = n * n * 0.1;
+			green = n;
+			blue = Zr2 * Zi2;
 			break;
 		}
 		default:
@@ -699,98 +679,31 @@ void getColor(std::complex<long double> c, std::complex<long double> Z)
 	//red %= 255;
 	//green %= 255;
 	//blue %= 255;
+
+	return png::rgb_pixel(red, green, blue);
 }
 
-/*string equation;
-template<typename T> bool createEquation()
-{
-	png::image<png::rgb_pixel> image(TILE, TILE);
-	uint_fast32_t startY = tileY * TILE;
-	uint_fast32_t pY = startY;
-	uint_fast32_t pX = 0;
-
-	T x = T(pX);
-	T y = T(pY);
-
-	exprtk::symbol_table<T> symbol_table;
-	symbol_table.add_variable("x", x);
-	symbol_table.add_variable("y", y);
-	symbol_table.add_constants();
-
-	exprtk::expression<T> expression;
-	expression.register_symbol_table(symbol_table);
-
-	exprtk::parser<T> parser;
-
-	for(; pY < startY + TILE; ++pY)
-	{
-		uint_fast32_t startX = tileX * TILE;
-		pX = startX;
-		for(; pX < startX + TILE; ++pX)
-		{
-			x = T(pX);
-			y = T(pY);
-			if(!parser.compile(equation, expression))
-			{
-				std::cout << "Parsing error: " << parser.error() << "\n";
-				return false;
-			}
-			uint_fast32_t color = floor(expression.value() + 0.5);
-			red = color >> 16 & 0xFF;
-			green = color >> 8 & 0xFF;
-			blue = color & 0xFF;
-			uint_fast32_t drawX = pX;
-			while(drawX >= TILE)
-			{
-				drawX -= TILE;
-			}
-			uint_fast32_t drawY = pY;
-			while(drawY >= TILE)
-			{
-				drawY -= TILE;
-			}
-			image.set_pixel(drawX, drawY, png::rgb_pixel(red, green, blue));
-		}
-	}
-	image.write(imgPath);
-	std::cout << "Saved tile: [" << tileX << ", " << tileY << "]\n";
-	return true;
-}*/
-
 bool cancel = false;
-void createFractal(bool tile)
+void createFractal(
+	kompleks_type lbound, kompleks_type rbound, kompleks_type bbound, kompleks_type ubound,
+	uint_fast32_t color_method, kompleks_type juliaA, kompleks_type juliaB)
 {
-	uint_fast32_t totalPoints = (tile ? TILE * TILE : (wallpaper ? wallpaperW * wallpaperH : fractalRes * fractalRes));
+	double width = (rbound - lbound);
+	double height = (ubound - bbound);
+	double xinterval = width / width_px;
+	double yinterval = height / height_px;
+
+	uint_fast32_t totalPoints = width_px * height_px;
 	uint_fast32_t currentPoint = 0;
 
-	#ifdef USE_GMP
-	mpz_t recursive;
-	mpz_init(recursive);
-
-	mpz_t escaped;
-	mpz_init(escaped);
-
-	mpz_t notEscaped;
-	mpz_init(notEscaped);
-
-	mpz_t skipped;
-	mpz_init(skipped);
-
-	mpz_t run;
-	mpz_init(run);
-
-	mpz_t maxIter;
-	mpz_init(maxIter);
-	#else
-	uint_fast64_t recursive = 0; // amount of recursive points
+	uint_fast64_t periodic = 0; // amount of periodic points
 	uint_fast64_t escaped = 0; // amount of escaped points
 	uint_fast64_t notEscaped = 0; // amount of points that did not escape
 	uint_fast64_t skipped = 0;
 	uint_fast64_t run = 0; // amount of iterations processed
-	uint_fast64_t maxIter = 0; // maximum iterations used on a point that escaped
-	#endif
+	uint_fast64_t max_n = 0; // maximum iterations used on a point that escaped
 
-	std::complex<long double> c;
+	kompleks c;
 	std::stringstream ss;
 	ss << "Rendering " << typeStrings[type] << "...";
 	std::string startString = ss.str();
@@ -806,15 +719,11 @@ void createFractal(bool tile)
 	ts.tv_nsec = 0;
 	clock_settime(CLOCK_PROCESS_CPUTIME_ID, &ts);
 
-	png::image<png::rgb_pixel> image(tile ? TILE : (wallpaper ? wallpaperW : fractalRes), tile ? TILE : (wallpaper ? wallpaperH : fractalRes));
+	png::image<png::rgb_pixel> image(width_px, height_px);
 
-	uint_fast32_t startY = (tile ? tileY * TILE : 0);
-	uint_fast32_t endY = (tile ? startY + TILE : (wallpaper ? wallpaperH :fractalRes));
-	for(uint_fast32_t pY = startY; pY < endY; ++pY)
+	for(uint_fast32_t pY = 0; pY < height_px; ++pY)
 	{
-		uint_fast32_t startX = (tile ? tileX * TILE : 0);
-		uint_fast32_t endX = (tile ? startX + TILE : (wallpaper ? wallpaperW : fractalRes));
-		for(uint_fast32_t pX = startX; pX < endX; ++pX)
+		for(uint_fast32_t pX = 0; pX < width_px; ++pX)
 		{
 			if(difftime(statusT2, statusT1) >= 1)
 			{
@@ -832,188 +741,58 @@ void createFractal(bool tile)
 				time(&statusT2);
 			}
 
-			//long double a = (pX / (long double)fractalRes) * 4.0 - 2.0;
-			long double a = scale;
-			if(wallpaper)
-			{
-				a *= (pX / (double)wallpaperW);
-			}
-			else
-			{
-				a *= (pX / (double)fractalRes);
-			}
-			a -= 2.0;
+			kompleks_type x = lbound + pX * xinterval + xinterval / 2;
+			kompleks_type y = -(bbound + pY * yinterval + yinterval / 2);
+			kompleks_type y2 = y*y;
 
-			//long double b = (pY / (long double)fractalRes) * 4.0 - 2.0;
-			long double b = scale;
-			if(wallpaper)
+			kompleks_type q = (x - 0.25)*(x - 0.25) + y2;
+			if(!single && type == mandelbrot && exponent == 2 && escapeLimit >=4 && q * (q + (x - 0.25)) < 0.25 * y2) // cardioid
 			{
-				b *= (pY / (double)wallpaperH);
-			}
-			else
-			{
-				b *= (pY / (double)fractalRes);
-			}
-			b -= 2.0;
-
-			if(wallpaper)
-			{
-				a *= 16.0 / 9.0;
-			}
-
-			long double q = (a - 0.25)*(a - 0.25) + b*b;
-			// TODO: add exponentD
-			if(!single && type == mandelbrot && exponent == 2 && escapeLimit >=4 && q * (q + (a - 0.25)) < 0.25 * (b*b)) // cardioid
-			{
-				#ifdef USE_GMP
-				mpz_add_ui(skipped, skipped, 1);
-				#else
 				++skipped;
-				#endif
-				//image.set_pixel(pX, pY, png::rgb_pixel(0, 255, 0));
 			}
-			else if(!single && type == mandelbrot && exponent == 2 && escapeLimit >= 4 && (a+1)*(a+1) + b*b < 0.0625) // bulb
+			else if(!single && type == mandelbrot && exponent == 2 && escapeLimit >= 4 && (x+1)*(x+1) + y2 < 0.0625) // bulb
 			{
-				#ifdef USE_GMP
-				mpz_add_ui(skipped, skipped, 1);
-				#else
 				++skipped;
-				#endif
-				//image.set_pixel(pX, pY, png::rgb_pixel(0, 255, 0));
 			}
 			else
 			{
-				std::complex<long double> Z(a, b);
-				if(type == julia)
+				kompleks Z(x, y);
+				if(type == julia || type == julia2)
 				{
-					c = std::complex<long double>(juliaA, juliaB);
+					c = kompleks(juliaA, juliaB);
 				}
 				else
 				{
-					c = std::complex<long double>(a, b);
+					c = kompleks(x, y);
 				}
-				std::complex<long double> pn(a, b); // previous iteration
+				kompleks pn(x, y); // previous iteration
 				// TODO: Finish implementing this
-				std::complex<long double> pCheckArray[pCheck];
+				kompleks pCheckArray[pCheck];
 				for(uint_fast32_t p = 0; p < pCheck; ++p)
 				{
-					pCheckArray[p] = std::complex<long double>(a, b);
+					pCheckArray[p] = kompleks(x, y);
 				}
 
-				//stringstream pointLog;
-
-				long double maxNorm = norm(Z);
-				long double minNorm = norm(Z);
-
-				bool shrinking = true;
-				long double lastNorm = norm(Z);
-
-				for(n = 0; n < iterations; ++n)
+				for(n = 0; n <= max_iterations; ++n)
 				{
-					if(filter1)
-					{
-						if(n > filter1T && minNorm > 0.02 && norm(Z) > minNorm && norm(Z) < maxNorm)
-						{
-							#ifdef USE_GMP
-							mpz_add_ui(skipped, skipped, 1);
-							#else
-							++skipped;
-							#endif
-							if(type == neuron && colorMethod == 0)
-							{
-								image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
-							}
-							break;
-						}
-						if(norm(Z) > maxNorm)
-						{
-							maxNorm = norm(Z);
-						}
-						if(norm(Z) < minNorm)
-						{
-							minNorm = norm(Z);
-						}
-					}
-					if(filter2 && n > 1 && shrinking)
-					{
-						if(norm(Z) < lastNorm)
-						{
-							if(n > filter2T)
-							{
-								#ifdef USE_GMP
-								mpz_add_ui(skipped, skipped, 1);
-								#else
-								++skipped;
-								#endif
-								if(type == neuron && (colorMethod == 0 || colorMethod == 1 || colorMethod == 9))
-								{
-									image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
-								}
-								break;
-							}
-							else
-							{
-								lastNorm = norm(Z);
-							}
-						}
-						else
-						{
-							shrinking = false;
-						}
-					}
-					//pointLog << "Point " << c << ", iteration " << n << ": " << Z << " (norm is " << norm(Z) << ")\n";
-					#ifdef USE_GMP
-					mpz_add_ui(run, run, 1);
-					#else
 					++run;
-					#endif
-					if((single && n == iterations - 1) || (!single && norm(Z) > escapeLimit && n > 0))
+					if((single && n == max_iterations) || (!single && Z.norm() > escapeLimit && n > 0))
 					{
-						//cout << "Point " << c2 << " escaped at iteration " << n << ": " << Z << "\n";
-						#ifdef USE_GMP
-						mpz_add_ui(escaped, escaped, 1);
-						// TODO: maxIter
-						#else
 						++escaped;
-						if(n > maxIter)
+						if(n > max_n)
 						{
-							maxIter = n;
+							max_n = n;
 						}
-						#endif
-						getColor(c, Z);
-						if(tile)
-						{
-							uint_fast32_t drawX = pX;
-							while(drawX >= TILE)
-							{
-								drawX -= TILE;
-							}
-							uint_fast32_t drawY = pY;
-							while(drawY >= TILE)
-							{
-								drawY -= TILE;
-							}
-							image.set_pixel(drawX, drawY, png::rgb_pixel(red, green, blue));
-						}
-						else
-						{
-							image.set_pixel(pX, pY, png::rgb_pixel(red, green, blue));
-						}
+						image.set_pixel(pX, pY, getColor(color_method, c, Z));
 						break;
 					}
-					if(n + 1 == iterations)
+					if(n == max_iterations)
 					{
-						//cout << "Point " << c << " did not escape: " << Z << "\n" << pointLog.str() << "\n";
-						#ifdef USE_GMP
-						mpz_add_ui(notEscaped, notEscaped, 1);
-						#else
 						++notEscaped;
-						#endif
-						//image.set_pixel(pX, pY, png::rgb_pixel(255, 0, 0));
 						break;
 					}
 					Z = iterate(Z, c);
-					//if(!single && pn == Z) // do not detect recursive points in single mode
+
 					if(!single && pCheck > 0)
 					{
 						bool exitLoop = false;
@@ -1021,20 +800,11 @@ void createFractal(bool tile)
 						{
 							if(pCheckArray[p] == Z)
 							{
-								//cout << c2 << " is recursive at iteration " << n << ": " << pn << " == " << Z << "\n";
-								#ifdef USE_GMP
-								mpz_add_ui(recursive, recursive, 1);
-								#else
-								++recursive;
-								#endif
-								if(type == neuron && (colorMethod == 0 || colorMethod == 1 || colorMethod == 9))
+								++periodic;
+								if(type == neuron && (color_method == 0 || color_method == 1 || color_method == 9))
 								{
 									image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
 								}
-								/*else
-								{
-									image.set_pixel(pX, pY, png::rgb_pixel(0, 0, 255));
-								}*/
 								exitLoop = true;
 								break;
 							}
@@ -1072,81 +842,69 @@ void createFractal(bool tile)
 
 	clearLine(spaces);
 
+	// make filename
 	ss.clear();
 	ss.str("");
-	ss << "tiles/" << typeStrings[type] << "/" << colorMethod << "/";
+	ss << "tiles/" << typeStrings[type] << "/" << color_method << "/";
 
-	//ss << TILE << "/" << path2 << "/" << tileX << "x" << tileY;
-
-	if(!tile)
+	if(single)
 	{
-		ss << (single ? "single_" : "full_");
-		ss << colorMul << "_";
-		if(negative)
-		{
-			ss << "-";
-		}
-		ss << (exponentD == 2 ? exponent : exponentD) << "_";
-		if(type == julia)
-		{
-			ss << juliaA << "_" << juliaB << "_";
-		}
-		if(wallpaper)
-		{
-			ss << "wall" << wallpaperScale;
-		}
-		else
-		{
-			ss << fractalRes;
-		}
-		ss << "_" << (single ? iterations : maxIter + 1);
-		if(colorMethod == 1 && disableFancy)
-		{
-			ss << "_df";
-		}
-
-		if(filter1)
-		{
-			ss << "_f1-" << filter1T;
-		}
-		if(filter2)
-		{
-			ss << "_f2-" << filter2T;
-		}
-
-		if(!single)
-		{
-			ss << "_" << escapeLimit;
-		}
-
-		if((colorMethod == 0 || colorMethod == 1) && smooth)
-		{
-			ss << "_smooth";
-		}
+		ss << "single_";
 	}
-	else
+	ss << "e" << exponent;
+
+	if(lbound != -2)
 	{
-		ss << TILE << "/" << exponent;
-		if(type == julia)
-		{
-			ss << "/" << juliaA << "_" << juliaB;
-		}
-		ss << "/" << fractalRes << "/" << iterations << "/" << tileX << "x" << tileY;
+		ss << "_lb" << lbound;
+	}
+	if(rbound != 2)
+	{
+		ss << "_rb" << rbound;
+	}
+	if(bbound != -2)
+	{
+		ss << "_bb" << bbound;
+	}
+	if(ubound != 2)
+	{
+		ss << "_ub" << ubound;
+	}
+
+	if(type == julia || type == julia2)
+	{
+		ss << "_jx" << juliaA << "_jy" << juliaB;
+	}
+	if(color_method == 1 && disableFancy)
+	{
+		ss << "_df";
+	}
+
+	if(!single)
+	{
+		ss << "_el" << escapeLimit;
+	}
+	ss << "_mi" << (single ? max_iterations : max_n);
+
+	if((color_method == 0 || color_method == 1) && smooth)
+	{
+		ss << "_smooth";
+	}
+	ss << "_" << width_px << "x";
+	if(width_px != height_px)
+	{
+		ss << height_px;
+	}
+	ss << "_cm" << colorMul;
+	if(cancel)
+	{
+		ss << "_partial";
 	}
 	ss << ".png";
 	imgPath = ss.str();
 
+	// save stuff
 	std::cout << "\r" << startString << " saving..." << std::flush;
 	image.write(imgPath);
-
-	#ifdef USE_GMP
-	char *strE = mpz_get_str(NULL, 10, escaped);
-	char *strNE = mpz_get_str(NULL, 10, notEscaped);
-	char *strR = mpz_get_str(NULL, 10, recursive);
-	char *strS = mpz_get_str(NULL, 10, skipped);
-	char *strI = mpz_get_str(NULL, 10, run);
-	char *strMI = mpz_get_str(NULL, 10, maxIter);
-	#endif
 
 	std::cout << " done in ";
 	if(ts.tv_sec > 0)
@@ -1154,550 +912,175 @@ void createFractal(bool tile)
 		std::cout << ts.tv_sec << " second" << (ts.tv_sec != 1 ? "s":"") << " + ";
 	}
 	std::cout << ts.tv_nsec << " nanoseconds (";
-	#ifdef USE_GMP
-	std::cout << strE << " e, " << strNE << " ne, " << strR << " r, " << strS << " s, " << strI << " i)\n";
-
-	free(strE);
-	free(strNE);
-	free(strR);
-	free(strS);
-	free(strI);
-	free(strMI);
-
-	mpz_set_ui(escaped, 0);
-	mpz_set_ui(notEscaped, 0);
-	mpz_set_ui(recursive, 0);
-	mpz_set_ui(skipped, 0);
-	mpz_set_ui(run, 0);
-	mpz_set_ui(maxIter, 0);
-	#else
-	std::cout << escaped << " e, " << notEscaped << " ne, " << recursive << " r, " << skipped << " s, " << run << " i, " << maxIter << " mi)\n";
-
-	/*std::cout << "Command: ./fractal ";
-	if(type != mandelbrot)
-	{
-		std::cout << "-t " << typeStrings[type] << " ";
-		if(type == julia)
-		{
-			if(juliaA != -0.8)
-			{
-				std::cout << "-ja " << juliaA << " ";
-			}
-			if(juliaB != 0.156)
-			{
-				std::cout << "-jb " << juliaB << " ";
-			}
-		}
-	}
-	if((exponent != 2 || (exponent == 2 && negative)) || exponentD != 2)
-	{
-		if(exponentD == 2)
-		{
-			std::cout << "-e " << (negative ? "-" : "") << exponent << " ";
-		}
-		else
-		{
-			std::cout << "-e " << exponentD << " ";
-		}
-	}
-	if(escapeLimit != 4)
-	{
-		std::cout << "-el " << escapeLimit << " ";
-	}
-	if(maxIter != 511)
-	{
-		std::cout << "-i " << maxIter + 1 << " ";
-	}
-	if(pCheck != 0)
-	{
-		std::cout << "-pc " << pCheck << " ";
-	}
-	if(filter1)
-	{
-		std::cout << "-f1 " << filter1T << " ";
-	}
-	if(filter2)
-	{
-		std::cout << "-f2 " << filter2T << " ";
-	}
-	if(colorMethod != 0)
-	{
-		std::cout << "-c " << colorMethod << " ";
-	}
-	if(colorMul != 1)
-	{
-		std::cout << "-cm " << colorMul << " ";
-	}
-	if(smooth)
-	{
-		std::cout << "-s ";
-	}
-	if(disableFancy)
-	{
-		std::cout << "-df ";
-	}
-	if(wallpaper)
-	{
-		std::cout << "-w ";
-	}
-	else if(fractalRes != 512)
-	{
-		std::cout << "-r " << fractalRes << " ";
-	}
-	if(single)
-	{
-		std::cout << "-S ";
-	}
-	std::cout << "\n";*/
+	std::cout << escaped << " e, " << notEscaped << " ne, " << periodic << " p, " << skipped << " s, " << run << " i, " << max_n << " mi)\n";
 
 	escaped = 0;
 	notEscaped = 0;
-	recursive = 0;
+	periodic = 0;
 	skipped = 0;
 	run = 0;
-	maxIter = 0;
-	#endif // USE_GMP
+	max_n = 0;
 }
 
-void handler(int s)
+void create_directory(const std::string& dirname)
 {
-	if(s == 2) // CTRL + C
+	if(mkdir(dirname.c_str(), 0777) != 0)
 	{
-		cancel = true;
+		if(errno != EEXIST)
+		{
+			throw std::runtime_error(strerror(errno));
+		}
 	}
+}
+
+void show_help()
+{
+	std::cout << "[s] means string, [d] means double, and [i] means integer. Options that take a value will fail without one.\n";
+	std::cout << " -s  or --smooth          Smooth the color bands for methods 0 and 1\n";
+	std::cout << " -S  or --single          Color all points with the specified iteration count\n";
+	std::cout << "                           instead of the escape time\n";
+	std::cout << " -df or --disableFancy    Disable fancy coloring for method 1\n";
+	std::cout << " -t  or --type        [s] Choose the type of fractal to render. Available types:\n";
+	std::cout << "                           mandelbrot\n";
+	std::cout << "                           julia\n";
+	std::cout << "                           burning_ship\n";
+	std::cout << "                           tricorn\n";
+	std::cout << "                           neuron\n";
+	std::cout << "                           stupidbrot\n";
+	std::cout << "                           untitled1\n";
+	std::cout << "                           dots\n";
+	std::cout << " -ja or --juliaA      [d] The real part of c (for julia only)\n";
+	std::cout << " -jb or --juliaB      [d] The imaginary part of c (for julia only)\n";
+	std::cout << " -c  or --colo[u]r    [i] The coloring method to use. Available values:\n";
+	std::cout << "                           0 - gold (escape time)\n";
+	std::cout << "                           1 - green (escape time) with red/blue crap\n";
+	std::cout << "                           2 - green/orange crap with blue laser things\n";
+	std::cout << "                           3 - red/blue crap with green laser thingies\n";
+	std::cout << "                           4 - weird white and black crap\n";
+	std::cout << "                           5 - glowing (green)\n";
+	std::cout << "                           6 - glowing (pink)\n";
+	std::cout << "                           7 - glowing (blue)\n";
+	std::cout << "                           8 - pinkish XOR\n";
+	std::cout << " -cm                  [d] Color multiplier";
+	std::cout << " -r  or --resolution  [i] Picture size (width and height)\n";
+	std::cout << " -i  or --iterations  [i] Maximum iterations for each point\n";
+	std::cout << " -e  or --exponent    [d] Change the exponent used. Higher = slower generating\n";
+	std::cout << " -el or --escapeLimit [d] Be careful with this\n";
+	std::cout << "\n";
+	std::cout << "If an invalid value is specified, the default will be used. For the filters, the value you specify is how many iterations are run before the filter starts checking points.\n";
 }
 
 int main(int argc, char** argv)
 {
 	if(argc < 2)
 	{
-		argv[1] = (char*)"-h";
+		show_help();
+		return 0;
 	}
 	std::string firstArg(argv[1]);
 	if(firstArg == "--help" || firstArg == "-h" || firstArg == "-?")
 	{
-		std::cout << "[s] means string, [d] means double, and [i] means integer. Options that take a value will fail without one.\n";
-		std::cout << " -s  or --smooth          Smooth the color bands for methods 0 and 1\n";
-		std::cout << " -S  or --single          Color all points with the specified iteration count\n";
-		std::cout << "                           instead of the escape time\n";
-		std::cout << " -df or --disableFancy    Disable fancy coloring for method 1\n";
-		std::cout << " -t  or --type        [s] Choose the type of fractal to render. Available types:\n";
-		std::cout << "                           mandelbrot\n";
-		std::cout << "                           julia\n";
-		std::cout << "                           burning_ship\n";
-		std::cout << "                           tricorn\n";
-		std::cout << "                           neuron\n";
-		std::cout << "                           stupidbrot\n";
-		std::cout << "                           untitled1\n";
-		std::cout << "                           dots\n";
-		std::cout << " -ja or --juliaA      [d] The real part of c (for julia only)\n";
-		std::cout << " -jb or --juliaB      [d] The imaginary part of c (for julia only)\n";
-		std::cout << " -c  or --colo[u]r    [i] The coloring method to use. Available values:\n";
-		std::cout << "                           0 - gold (escape time)\n";
-		std::cout << "                           1 - green (escape time) with red/blue crap\n";
-		std::cout << "                           2 - green/orange crap with blue laser things\n";
-		std::cout << "                           3 - red/blue crap with green laser thingies\n";
-		std::cout << "                           4 - weird white and black crap\n";
-		std::cout << "                           5 - glowing (green)\n";
-		std::cout << "                           6 - glowing (pink)\n";
-		std::cout << "                           7 - glowing (blue)\n";
-		std::cout << "                           8 - pinkish XOR\n";
-		std::cout << " -cm                  [d] Color multiplier";
-		std::cout << " -r  or --resolution  [i] Picture size (width and height)\n";
-		std::cout << " -i  or --iterations  [i] Maximum iterations for each point\n";
-		std::cout << " -e  or --exponent    [d] Change the exponent used. Higher = slower generating\n";
-		std::cout << " -f1 or --filter1     [d] A crappy point filter (not reliable)\n";
-		std::cout << " -f2 or --filter2     [d] Works best with Neuron and color method 0 (try -f2 512)\n";
-		std::cout << " -el or --escapeLimit [d] Be careful with this\n";
-		std::cout << "\n";
-		std::cout << "If an invalid value is specified, the default will be used. For the filters, the value you specify is how many iterations are run before the filter starts checking points.\n";
+		show_help();
 		return 0;
 	}
-	bool tile = false;
-	for(int arg = 1; arg < argc; ++arg)
+
+	ArgParser argp;
+	argp.add("-df", false);
+	argp.add("-s", false);
+	argp.add("-S", false);
+
+	argp.add("-c", 0);
+	argp.add("-cm", 1.0);
+	argp.add("-e", 2.0);
+	argp.add("-el", 4.0);
+	argp.add("-i", 1024);
+	argp.add("-ja", -0.8);
+	argp.add("-jb", 0.156);
+	argp.add("-pc", 1);
+	argp.add("-r", 1024);
+	argp.add("-t", "mandelbrot");
+	argp.add("-lbound", -2.0);
+	argp.add("-rbound", 2.0);
+	argp.add("-bbound", -2.0);
+	argp.add("-ubound", 2.0);
+	argp.add("-box", 2.0);
+
+	try
 	{
-		std::string argument(argv[arg]);
-		if(argument == "-df" || argument == "--disableFancy")
-		{
-			disableFancy = true;
-		}
-		else if(argument == "-s" || argument == "--smooth")
-		{
-			smooth = true;
-		}
-		else if(argument == "-S" || argument == "--single")
-		{
-			single = true;
-		}
-		else
-		{
-			++arg;
-			std::string value;
-			try
-			{
-				value = std::string(argv[arg]);
-			}
-			catch(...)
-			{
-				std::cerr << "No value given for " << argument << "\n";
-				return ERR_ARGS;
-			}
-			if(argument == "-c" || argument == "--color" || argument == "--colour")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> colorMethod;
-				//if(colorMethod > 11) colorMethod = 0;
-			}
-			else if(argument == "-cm")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> colorMul;
-			}
-			else if(argument == "-e" || argument == "--exponent")
-			{
-				int e = 0;
-				std::stringstream ss;
-				ss << value;
-				ss >> e;
-				ss >> exponentD;
-				if(floor(exponentD) == exponentD)
-				{
-					exponentD = 2;
-					if(e < 0)
-					{
-						exponent = -e;
-						negative = true;
-					}
-					else
-					{
-						exponent = e;
-						negative = false;
-					}
-				}
-				else
-				{
-					exponentD += e;
-					exponent = floor(exponentD + 0.5);
-					exponentC = std::complex<long double>(exponentD, 0);
-				}
-			}
-			else if(argument == "-el" || argument == "--escapeLimit")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> escapeLimit;
-			}
-			else if(argument == "-f1" || argument == "--filter1")
-			{
-				filter1 = true;
-				std::stringstream ss;
-				ss << value;
-				ss >> filter1T;
-			}
-			else if(argument == "-f2" || argument == "--filter2")
-			{
-				filter2 = true;
-				std::stringstream ss;
-				ss << value;
-				ss >> filter2T;
-			}
-			else if(argument == "-i" || argument == "--iterations")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> iterations;
-			}
-			else if(argument == "-ja" || argument == "--juliaA")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> juliaA;
-			}
-			else if(argument == "-jb" || argument == "--juliaB")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> juliaB;
-			}
-			else if(argument == "-p" || argument == "--plane")
-			{
-				if(strcasecmp(value.c_str(), "lambda") == 0)
-				{
-					plane = lambda;
-				}
-				else if(strcasecmp(value.c_str(), "mu") != 0)
-				{
-					std::cerr << "Unknown fractal plane specified: " << value << "\n";
-					return ERR_ARGS;
-				}
-			}
-			else if(argument == "-pc")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> pCheck;
-			}
-			else if(argument == "-r" || argument == "--resolution")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> fractalRes;
-			}
-			else if(argument == "-t" || argument == "--type")
-			{
-				if(strcasecmp(value.c_str(), "julia") == 0)
-				{
-					type = julia;
-				}
-				else if(strcasecmp(value.c_str(), "burning_ship") == 0)
-				{
-					type = burning_ship;
-				}
-				else if(strcasecmp(value.c_str(), "tricorn") == 0)
-				{
-					type = tricorn;
-				}
-				else if(strcasecmp(value.c_str(), "neuron") == 0)
-				{
-					type = neuron;
-				}
-				else if(strcasecmp(value.c_str(), "stupidbrot") == 0)
-				{
-					type = stupidbrot;
-				}
-				else if(strcasecmp(value.c_str(), "untitled1") == 0)
-				{
-					type = untitled1;
-				}
-				else if(strcasecmp(value.c_str(), "dots") == 0)
-				{
-					type = dots;
-				}
-				else if(strcasecmp(value.c_str(), "magnet1") == 0)
-				{
-					type = magnet1;
-				}
-				else if(strcasecmp(value.c_str(), "experiment") == 0)
-				{
-					type = experiment;
-				}
-				else if(strcasecmp(value.c_str(), "mandelbrot") != 0)
-				{
-					std::cerr << "Unknown fractal type specified: " << value << "\n";
-					return ERR_ARGS;
-				}
-			}
-			else if(argument == "-tx" || argument == "--tileX")
-			{
-				tile = true;
-				std::stringstream ss;
-				ss << value;
-				ss >> tileX;
-			}
-			else if(argument == "-ty" || argument == "--tileY")
-			{
-				tile = true;
-				std::stringstream ss;
-				ss << value;
-				ss >> tileY;
-			}
-			else if(argument == "-w" || argument == "--wallpaper")
-			{
-				wallpaper = true;
-				std::stringstream ss;
-				ss << value;
-				ss >> wallpaperScale;
-				if(wallpaperScale != 0)
-				{
-					wallpaperW *= wallpaperScale;
-					wallpaperH *= wallpaperScale;
-				}
-				else
-				{
-					std::cerr << "Wallpaper scale can not be 0\n";
-					return ERR_ARGS;
-				}
-			}
-			else if(argument == "-z" || argument == "--zoom")
-			{
-				std::stringstream ss;
-				ss << value;
-				ss >> scale;
-				if(scale != 0)
-				{
-					scale = 4.0 / scale;
-				}
-				else
-				{
-					std::cerr << "Zoom can not be 0\n";
-					return ERR_ARGS;
-				}
-			}
-		}
+		argp.parse(argc, argv);
+	}
+	catch(std::runtime_error e)
+	{
+		std::cerr << e.what() << "\n";
+		return 1;
 	}
 
-	if(tile)
+	disableFancy = argp.get_bool("-df");
+	smooth = argp.get_bool("-s");
+	single = argp.get_bool("-S");
+
+	uint_fast32_t color_method = argp.get_int("-c");
+	if(color_method > 16) color_method = 0;
+
+	colorMul = argp.get_double("-cm");
+	exponent = argp.get_double("-e");
+	escapeLimit = argp.get_double("-el");
+	max_iterations = argp.get_int("-i");
+	double juliaA = argp.get_double("-ja");
+	double juliaB = argp.get_double("-jb");
+	pCheck = argp.get_int("-pc");
+	width_px = height_px = argp.get_int("-r");
+	try
 	{
-		uint_fast32_t maxTile = 0;
-		uint_fast32_t tmp = fractalRes;
-
-		while(tmp > tmp % TILE)
-		{
-			tmp -= TILE;
-			++maxTile;
-		}
-
-		if(tileX >= maxTile || tileY >= maxTile)
-		{
-			std::cout << "Tile out of bounds\n";
-			return ERR_TOOB;
-		}
+		type = string_to_fractal_type(argp.get_string("-t"));
+	}
+	catch(std::runtime_error e)
+	{
+		std::cerr << e.what() << "\n";
+		return 1;
 	}
 
-	if(mkdir("tiles", MODE) != 0)
+	double lbound, rbound, bbound, ubound;
+	if(argp.get_double("-box") != 2)
 	{
-		if(errno != EEXIST)
-		{
-			std::cout << strerror(errno) << "\n";
-			return ERR_DIR0;
-		}
-	}
-
-	std::stringstream ss;
-	ss << "tiles/" << typeStrings[type];
-	std::string path = ss.str();
-	if(mkdir(path.c_str(), MODE) != 0)
-	{
-		if(errno != EEXIST)
-		{
-			std::cout << strerror(errno) << "\n";
-			return ERR_DIR1;
-		}
-	}
-
-	ss << "/" << colorMethod;
-	path = ss.str();
-	if(mkdir(path.c_str(), MODE) != 0)
-	{
-		if(errno != EEXIST)
-		{
-			std::cout << strerror(errno) << "\n";
-			return ERR_DIR2;
-		}
-	}
-
-	if(tile)
-	{
-		ss << "/" << TILE;
-		path = ss.str();
-		if(mkdir(path.c_str(), MODE) != 0)
-		{
-			if(errno != EEXIST)
-			{
-				std::cout << strerror(errno) << "\n";
-				return ERR_DIR3;
-			}
-		}
-		ss << "/";
-		if(negative)
-		{
-			ss << "-";
-		}
-		ss << exponent;
-		path = ss.str();
-		if(mkdir(path.c_str(), MODE) != 0)
-		{
-			if(errno != EEXIST)
-			{
-				std::cout << strerror(errno) << "\n";
-				return ERR_DIR4;
-			}
-		}
-
-		if(type == julia)
-		{
-			ss << "/" << juliaA << "_" << juliaB;
-			path = ss.str();
-			if(mkdir(path.c_str(), MODE) !=0)
-			{
-				if(errno != EEXIST)
-				{
-					std::cout << strerror(errno) << "\n";
-					return ERR_DIR5;
-				}
-			}
-		}
-
-		ss << "/" << fractalRes;
-		path = ss.str();
-		if(mkdir(path.c_str(), MODE) !=0)
-		{
-			if(errno != EEXIST)
-			{
-				std::cout << strerror(errno) << "\n";
-				return ERR_DIR6;
-			}
-		}
-		ss << "/" << iterations;
-		path = ss.str();
-		if(mkdir(path.c_str(), MODE) !=0)
-		{
-			if(errno != EEXIST)
-			{
-				std::cout << strerror(errno) << "\n";
-				return ERR_DIR7;
-			}
-		}
-	}
-
-	/*if(argc > 6)
-	{
-		stringstream ss_e;
-		for(int arg = 6; arg < argc; ++arg)
-		{
-			ss_e << argv[arg];
-			if(arg != argc - 1)
-			{
-				ss_e << " ";
-			}
-		}
-		equation = ss_e.str();
-		std::cout << "Equation: " << equation << "\n";
-		path2 = equation;
-		replace(path2.begin(), path2.end(), '/', '\\');
-		ss << "/" << path2;
-		path = ss.str();
-		if(mkdir(path.c_str(), MODE) !=0)
-		{
-			if(errno != EEXIST)
-			{
-				std::cout << strerror(errno) << "\n";
-				return ERR_DIR8;
-			}
-		}
+		rbound = ubound = argp.get_double("-box");
+		lbound = bbound = -rbound;
 	}
 	else
 	{
-		std::cout << "No equation given\n";
-		return ERR_NOEQ;
-	}*/
+		lbound = argp.get_double("-lbound");
+		rbound = argp.get_double("-rbound");
+		bbound = argp.get_double("-bbound");
+		ubound = argp.get_double("-ubound");
+	}
 
-	ss.clear();
-	ss.str("");
+	// end arguments
 
-	//if(!createEquation<long double>()) return ERR_EQTN;
+	std::stringstream ss;
 
+	ss << "tiles";
+	create_directory("tiles");
+
+	ss << "/" << typeStrings[type];
+	create_directory(ss.str());
+
+	ss << "/" << color_method;
+	create_directory(ss.str());
+
+	// if Ctrl+C is pressed, stop iteration and save partial image
 	struct sigaction sigIntHandler;
-
-	sigIntHandler.sa_handler = handler;
+	sigIntHandler.sa_handler = [](int s)
+	{
+		if(s == 2) // CTRL + C
+		{
+			cancel = true;
+		}
+	};
 	sigemptyset(&sigIntHandler.sa_mask);
 	sigIntHandler.sa_flags = 0;
-
 	sigaction(SIGINT, &sigIntHandler, NULL);
 
-	createFractal(tile);
+	createFractal(lbound, rbound, bbound, ubound, color_method, juliaA, juliaB);
 
 	return 0;
 }
