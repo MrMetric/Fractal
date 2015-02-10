@@ -857,13 +857,10 @@ void createFractal(
 	std::cout << "\r" << startString << " saving..." << std::flush;
 	image.write(imgPath);
 
-	std::cout << " done in ";
-	if(ts.tv_sec > 0)
-	{
-		std::cout << ts.tv_sec << " second" << (ts.tv_sec != 1 ? "s":"") << " + ";
-	}
-	std::cout << ts.tv_nsec << " nanoseconds (";
-	std::cout << escaped << " e, " << notEscaped << " ne, " << periodic << " p, " << skipped << " s, " << run << " i, " << max_n << " mi)\n";
+	double seconds = ts.tv_sec + ts.tv_nsec / 1e9;
+
+	std::cout << " done in " << seconds << " second" << (seconds != 1 ? "s":"");
+	std::cout << " (" << escaped << " e, " << notEscaped << " ne, " << periodic << " p, " << skipped << " s, " << run << " i, " << max_n << " mi)\n";
 
 	escaped = 0;
 	notEscaped = 0;
