@@ -121,27 +121,11 @@ FractalType string_to_fractal_type(const std::string& typestr)
 	throw std::runtime_error("Unknown fractal type: " + typestr);
 }
 
-uint_fast32_t width_px = 512;
-uint_fast32_t height_px = 512;
-uint_fast32_t max_iterations = 1024;
 kompleks_type exponent = 2;
 bool smooth = false;
 bool disableFancy = false;
 kompleks_type escapeLimit = 4;
-bool single = false;
 kompleks_type colorMul = 1;
-uint_fast32_t pCheck = 1; // periodicity checking
-
-kompleks c_1(1, 0);
-kompleks c_2(2, 0);
-
-//kompleks_type Zr;
-//kompleks_type Zi;
-kompleks_type Zr2;
-kompleks_type Zi2;
-uint_fast32_t n;
-
-std::string imgPath = "";
 
 // https://github.com/kobalicek/rgbhsv/blob/master/src/rgbhsv.cpp
 void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t dst[3])
@@ -170,90 +154,11 @@ void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t dst
 	}
 }
 
-kompleks iterate(kompleks Z, kompleks& c)
-{
-	if(type == mandelbrot || type == julia)
-	{
-		return (Z^exponent) + c;
-	}
-	if(type == julia2)
-	{
-		return sqrt(std_sinh(Z^exponent).to_std()) + c;
-	}
-	if(type == burning_ship)
-	{
-		kompleks_type real_abs = abs(Z.real);
-		kompleks_type imag_abs = abs(Z.imag);
-		return (kompleks(real_abs, imag_abs)^exponent) + c;
-	}
-	if(type == tricorn)
-	{
-		// this formula shows it flipped horizontally
-		//return (Z.swap_xy()^exponent) + c;
-
-		// this formula is the one given on Wikipedia
-		return (Z.conjugate()^exponent) + c;
-	}
-	if(type == neuron)
-	{
-		// original flipped formula; higher exponents are rotated slightly
-		return (Z.swap_xy()^exponent) + Z;
-
-		// this formula matches the tricorn; use this to get unrotated images
-		//return (kompleks(Z.real, -Z.imag)^exponent) + Z;
-	}
-	if(type == clouds)
-	{
-		// TODO: this donuts work
-		kompleks new_z = (Z.swap_xy()^exponent) + c;
-		c = Z;
-		return new_z;
-	}
-	if(type == stupidbrot)
-	{
-		Z = (Z^exponent);
-		if(n % 2 == 0)
-		{
-			Z = Z + c;
-		}
-		else
-		{
-			Z = Z - c;
-		}
-		return Z;
-	}
-	if(type == untitled1)
-	{
-		std::complex<kompleks_type> Z_std = pow(Z.to_std(), Z.to_std());
-		return kompleks(Z_std) + Z;
-	}
-	if(type == dots)
-	{
-		return (Z^exponent) / c;
-	}
-	if(type == magnet1)
-	{
-		return (((Z^2) + (c - c_1)) / (Z * c_2 + (c - c_2))) ^ 2;
-	}
-	if(type == experiment)
-	{
-		//return lepow(c, exponent) + Z;
-
-		// diagonal line
-		//return kompleks(Z.imag, Z.real) + c;
-
-		//return (Z^(exponent + 1)) + (Z^exponent) + c;
-		return (Z^exponent) + c_1/c;
-	}
-	// TODO: throw an exception
-	return Z;
-}
-
-const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks c, kompleks Z)
+const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks Z, kompleks c, uint_fast64_t n)
 {
 	uint_fast64_t red, green, blue;
-	Zr2 = Z.real*Z.real;
-	Zi2 = Z.imag*Z.imag;
+	kompleks_type Zr2 = Z.real*Z.real;
+	kompleks_type Zi2 = Z.imag*Z.imag;
 	switch(color_method)
 	{
 		case 0: // escape time (gold)
@@ -634,6 +539,91 @@ const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks c, kompleks Z
 	return png::rgb_pixel(red, green, blue);
 }
 
+kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
+{
+	if(type == mandelbrot || type == julia)
+	{
+		return (Z^exponent) + c;
+	}
+	if(type == julia2)
+	{
+		return sqrt(std_sinh(Z^exponent).to_std()) + c;
+	}
+	if(type == burning_ship)
+	{
+		kompleks_type real_abs = abs(Z.real);
+		kompleks_type imag_abs = abs(Z.imag);
+		return (kompleks(real_abs, imag_abs)^exponent) + c;
+	}
+	if(type == tricorn)
+	{
+		// this formula shows it flipped horizontally
+		//return (Z.swap_xy()^exponent) + c;
+
+		// this formula is the one given on Wikipedia
+		return (Z.conjugate()^exponent) + c;
+	}
+	if(type == neuron)
+	{
+		// original flipped formula; higher exponents are rotated slightly
+		return (Z.swap_xy()^exponent) + Z;
+
+		// this formula matches the tricorn; use this to get unrotated images
+		//return (kompleks(Z.real, -Z.imag)^exponent) + Z;
+	}
+	if(type == clouds)
+	{
+		// TODO: this donuts work
+		kompleks new_z = (Z.swap_xy()^exponent) + c;
+		c = Z;
+		return new_z;
+	}
+	if(type == stupidbrot)
+	{
+		Z = (Z^exponent);
+		if(n % 2 == 0)
+		{
+			Z = Z + c;
+		}
+		else
+		{
+			Z = Z - c;
+		}
+		return Z;
+	}
+	if(type == untitled1)
+	{
+		std::complex<kompleks_type> Z_std = pow(Z.to_std(), Z.to_std());
+		return kompleks(Z_std) + Z;
+	}
+	if(type == dots)
+	{
+		return (Z^exponent) / c;
+	}
+	if(type == magnet1)
+	{
+		return (((Z^2) + (c - 1)) / (Z * 2 + (c - 2))) ^ 2;
+	}
+	if(type == experiment)
+	{
+		//return lepow(c, exponent) + Z;
+
+		// diagonal line
+		//return kompleks(Z.imag, Z.real) + c;
+
+		//return (Z^(exponent + 1)) + (Z^exponent) + c;
+		return (Z^exponent) + c.reciprocal();
+	}
+	// TODO: throw an exception
+	return Z;
+}
+
+uint_fast32_t width_px = 512;
+uint_fast32_t height_px = 512;
+uint_fast64_t max_iterations = 1024;
+bool single = false;
+uint_fast32_t pCheck = 1; // periodicity checking
+
 bool cancel = false;
 void createFractal(
 	kompleks_type lbound, kompleks_type rbound, kompleks_type bbound, kompleks_type ubound,
@@ -724,7 +714,7 @@ void createFractal(
 					pCheckArray[p] = kompleks(x, y);
 				}
 
-				for(n = 0; n <= max_iterations; ++n)
+				for(uint_fast64_t n = 0; n <= max_iterations; ++n)
 				{
 					++run;
 					if((single && n == max_iterations) || (!single && Z.norm() > escapeLimit && n > 0))
@@ -734,7 +724,7 @@ void createFractal(
 						{
 							max_n = n;
 						}
-						image.set_pixel(pX, pY, getColor(color_method, c, Z));
+						image.set_pixel(pX, pY, getColor(color_method, Z, c, n));
 						break;
 					}
 					if(n == max_iterations)
@@ -742,7 +732,7 @@ void createFractal(
 						++notEscaped;
 						break;
 					}
-					Z = iterate(Z, c);
+					Z = iterate(Z, c, n);
 
 					if(!single && pCheck > 0)
 					{
@@ -851,7 +841,7 @@ void createFractal(
 		ss << "_partial";
 	}
 	ss << ".png";
-	imgPath = ss.str();
+	std::string imgPath = ss.str();
 
 	// save stuff
 	std::cout << "\r" << startString << " saving..." << std::flush;
@@ -887,36 +877,36 @@ void create_directory(const std::string& dirname)
 void show_help()
 {
 	std::cout << "[s] means string, [d] means double, and [i] means integer. Options that take a value will fail without one.\n";
-	std::cout << " -s  or --smooth          Smooth the color bands for methods 0 and 1\n";
-	std::cout << " -S  or --single          Color all points with the specified iteration count\n";
-	std::cout << "                           instead of the escape time\n";
-	std::cout << " -df or --disableFancy    Disable fancy coloring for method 1\n";
-	std::cout << " -t  or --type        [s] Choose the type of fractal to render. Available types:\n";
-	std::cout << "                           mandelbrot\n";
-	std::cout << "                           julia\n";
-	std::cout << "                           burning_ship\n";
-	std::cout << "                           tricorn\n";
-	std::cout << "                           neuron\n";
-	std::cout << "                           stupidbrot\n";
-	std::cout << "                           untitled1\n";
-	std::cout << "                           dots\n";
-	std::cout << " -ja or --juliaA      [d] The real part of c (for julia only)\n";
-	std::cout << " -jb or --juliaB      [d] The imaginary part of c (for julia only)\n";
-	std::cout << " -c  or --colo[u]r    [i] The coloring method to use. Available values:\n";
-	std::cout << "                           0 - gold (escape time)\n";
-	std::cout << "                           1 - green (escape time) with red/blue crap\n";
-	std::cout << "                           2 - green/orange crap with blue laser things\n";
-	std::cout << "                           3 - red/blue crap with green laser thingies\n";
-	std::cout << "                           4 - weird white and black crap\n";
-	std::cout << "                           5 - glowing (green)\n";
-	std::cout << "                           6 - glowing (pink)\n";
-	std::cout << "                           7 - glowing (blue)\n";
-	std::cout << "                           8 - pinkish XOR\n";
-	std::cout << " -cm                  [d] Color multiplier";
-	std::cout << " -r  or --resolution  [i] Picture size (width and height)\n";
-	std::cout << " -i  or --iterations  [i] Maximum iterations for each point\n";
-	std::cout << " -e  or --exponent    [d] Change the exponent used. Higher = slower generating\n";
-	std::cout << " -el or --escapeLimit [d] Be careful with this\n";
+	std::cout << " -s             Smooth the color bands for methods 0 and 1\n";
+	std::cout << " -S             Color all points with the specified iteration count\n";
+	std::cout << "                 instead of the escape time\n";
+	std::cout << " -t         [s] Fractal type:\n";
+	std::cout << "                 mandelbrot\n";
+	std::cout << "                 julia\n";
+	std::cout << "                 burning_ship\n";
+	std::cout << "                 tricorn\n";
+	std::cout << "                 neuron\n";
+	std::cout << "                 stupidbrot\n";
+	std::cout << "                 untitled1\n";
+	std::cout << "                 dots\n";
+	std::cout << " -jx        [d] The real part of c (for julia only)\n";
+	std::cout << " -jy        [d] The imaginary part of c (for julia only)\n";
+	std::cout << " -c         [i] The coloring method to use. Available values:\n";
+	std::cout << "                 0 - gold (escape time)\n";
+	std::cout << "                 1 - green (escape time) with red/blue crap\n";
+	std::cout << "                 2 - green/orange crap with blue laser things\n";
+	std::cout << "                 3 - red/blue crap with green laser thingies\n";
+	std::cout << "                 4 - weird white and black crap\n";
+	std::cout << "                 5 - glowing (green)\n";
+	std::cout << "                 6 - glowing (pink)\n";
+	std::cout << "                 7 - glowing (blue)\n";
+	std::cout << "                 8 - pinkish XOR\n";
+	std::cout << " -df            Disable fancy coloring for method 1\n";
+	std::cout << " -cm        [d] Color multiplier";
+	std::cout << " -r         [i] Picture size (width and height)\n";
+	std::cout << " -i         [i] Maximum iterations for each point\n";
+	std::cout << " -e         [d] Exponent (default = 2); higher absolute value = slower\n";
+	std::cout << " -el        [d] Escape limit (default = 4)\n";
 	std::cout << "\n";
 	std::cout << "If an invalid value is specified, the default will be used. For the filters, the value you specify is how many iterations are run before the filter starts checking points.\n";
 }
