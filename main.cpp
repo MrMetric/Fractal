@@ -50,81 +50,36 @@ enum FractalType
 };
 
 FractalType type = mandelbrot;
-std::string typeStrings[] =
+const uint_fast8_t type_string_count = 14;
+const char* type_strings[type_string_count] =
 {
-	"Mandelbrot",
-	"Julia",
-	"Julia2",
-	"Burning Ship",
-	"Tricorn",
-	"Neuron",
-	"Clouds",
-	"Oops",
-	"Stupidbrot",
-	"Untitled 1",
-	"Dots",
-	"Magnet 1",
-	"Magnet 2",
-	"Experiment"
+	"mandelbrot",
+	"julia",
+	"julia2",
+	"burning ship",
+	"tricorn",
+	"neuron",
+	"clouds",
+	"oops",
+	"stupidbrot",
+	"untitled 1",
+	"dots",
+	"magnet 1",
+	"magnet 2",
+	"experiment"
 };
 
-FractalType string_to_fractal_type(const std::string& typestr)
+FractalType string_to_fractal_type(const char* typestr)
 {
-	const char* typestrc = typestr.c_str();
+	for(int i = 0; i < type_string_count; ++i)
+	{
+		if(strcasecmp(typestr, type_strings[i]) == 0)
+		{
+			return (FractalType)i;
+		}
+	}
 
-	if(strcasecmp(typestrc, "mandelbrot") == 0)
-	{
-		return mandelbrot;
-	}
-	if(strcasecmp(typestrc, "julia") == 0)
-	{
-		return julia;
-	}
-	if(strcasecmp(typestrc, "julia2") == 0)
-	{
-		return julia2;
-	}
-	if(strcasecmp(typestrc, "burning_ship") == 0)
-	{
-		return burning_ship;
-	}
-	if(strcasecmp(typestrc, "tricorn") == 0)
-	{
-		return tricorn;
-	}
-	if(strcasecmp(typestrc, "neuron") == 0)
-	{
-		return neuron;
-	}
-	if(strcasecmp(typestrc, "clouds") == 0)
-	{
-		return clouds;
-	}
-	if(strcasecmp(typestrc, "oops") == 0)
-	{
-		return oops;
-	}
-	if(strcasecmp(typestrc, "stupidbrot") == 0)
-	{
-		return stupidbrot;
-	}
-	if(strcasecmp(typestrc, "untitled1") == 0)
-	{
-		return untitled1;
-	}
-	if(strcasecmp(typestrc, "dots") == 0)
-	{
-		return dots;
-	}
-	if(strcasecmp(typestrc, "magnet1") == 0)
-	{
-		return magnet1;
-	}
-	if(strcasecmp(typestrc, "experiment") == 0)
-	{
-		return experiment;
-	}
-	throw std::runtime_error("Unknown fractal type: " + typestr);
+	throw std::runtime_error("Unknown fractal type: " + std::string(typestr));
 }
 
 kompleks_type exponent = 2;
@@ -651,7 +606,7 @@ void createFractal(
 
 	kompleks c;
 	std::stringstream ss;
-	ss << "Rendering " << typeStrings[type] << "...";
+	ss << "Rendering " << type_strings[type] << "...";
 	std::string startString = ss.str();
 	std::cout << startString << std::flush;
 	uint_fast32_t spaces = 0;
@@ -796,7 +751,7 @@ void createFractal(
 	// make filename
 	ss.clear();
 	ss.str("");
-	ss << "tiles/" << typeStrings[type] << "/" << color_method << "/";
+	ss << "tiles/" << type_strings[type] << "/" << color_method << "/";
 
 	if(single)
 	{
@@ -999,7 +954,7 @@ int main(int argc, char** argv)
 	width_px = height_px = argp.get_int("-r");
 	try
 	{
-		type = string_to_fractal_type(argp.get_string("-t"));
+		type = string_to_fractal_type(argp.get_string("-t").c_str());
 	}
 	catch(std::runtime_error e)
 	{
@@ -1028,7 +983,7 @@ int main(int argc, char** argv)
 	ss << "tiles";
 	create_directory("tiles");
 
-	ss << "/" << typeStrings[type];
+	ss << "/" << type_strings[type];
 	create_directory(ss.str());
 
 	ss << "/" << color_method;
