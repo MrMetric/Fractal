@@ -143,78 +143,31 @@ uint_fast32_t n;
 
 std::string imgPath = "";
 
-#define HSVMODE 1
-void SetHSV(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t color[3])
+// https://github.com/kobalicek/rgbhsv/blob/master/src/rgbhsv.cpp
+void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t dst[3])
 {
-	kompleks_type r = 0, g = 0, b = 0;
-	if(s == 0)
+	if(h >= 1)
 	{
-		r = g = b = v;
+		h -= 1;
 	}
-	else
+	h *= 6;
+
+	int index = static_cast<int>(h);
+	double f = h - static_cast<double>(index);
+	double p = (v * (1.0f - s)) * 255;
+	double q = (v * (1.0f - s * f)) * 255;
+	double t = (v * (1.0f - s * (1.0f - f))) * 255;
+	v *= 255;
+
+	switch(index)
 	{
-		#if(HSVMODE == 1)
-		if(h == 1)
-		{
-			h = 0;
-		}
-		kompleks_type z = floor(h * 6);
-		int_fast32_t i = int(z);
-		double f = double(h * 6 - z);
-		#elif(HSVMODE == 2)
-		h /= 60;
-		int i = floor(h);
-		double f = h - i;
-		#endif
-
-		kompleks_type p = v * (1 - s);
-		kompleks_type q = v * (1 - s * f);
-		kompleks_type t = v * (1 - s * (1 - f));
-
-		switch(i)
-		{
-			case 0:
-				r = v;
-				g = t;
-				b = p;
-				break;
-			case 1:
-				r = q;
-				g = v;
-				b = p;
-				break;
-			case 2:
-				r = p;
-				g = v;
-				b = t;
-				break;
-			case 3:
-				r = p;
-				g = q;
-				b = v;
-				break;
-			case 4:
-				r = t;
-				g = p;
-				b = v;
-				break;
-			case 5:
-				r = v;
-				g = p;
-				b = q;
-				break;
-		}
+		case 0: dst[0] = v; dst[1] = t; dst[2] = p; break;
+		case 1: dst[0] = q; dst[1] = v; dst[2] = p; break;
+		case 2: dst[0] = p; dst[1] = v; dst[2] = t; break;
+		case 3: dst[0] = p; dst[1] = q; dst[2] = v; break;
+		case 4: dst[0] = t; dst[1] = p; dst[2] = v; break;
+		case 5: dst[0] = v; dst[1] = p; dst[2] = q; break;
 	}
-	int_fast32_t c;
-	c = int(256 * r);
-	if(c > 255) c = 255;
-	color[0] = c;
-	c = int(256 * g);
-	if(c > 255) c = 255;
-	color[1] = c;
-	c = int(256 * b);
-	if(c > 255) c = 255;
-	color[2] = c;
 }
 
 kompleks iterate(kompleks Z, kompleks& c)
@@ -633,7 +586,7 @@ const png::rgb_pixel getColor(uint_fast32_t color_method, kompleks c, kompleks Z
 		case 15: // hue
 		{
 			uint_fast8_t colors[3];
-			SetHSV((n % 32) / 32.0, 1, 1, colors);
+			HSV2RGB((n % 32) / 32.0, 1, 1, colors);
 			red = colors[0];
 			green = colors[1];
 			blue = colors[2];
