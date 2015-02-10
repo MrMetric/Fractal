@@ -10,20 +10,17 @@ ArgParser::ArgParser()
 
 void ArgParser::add(const std::string& argname, bool value)
 {
-	//std::cout << "Default for " << argname << " (bool): " << value << "\n";
 	this->flags_default[argname] = value;
 	this->flags[argname] = value;
 }
 
 void ArgParser::add(const std::string& argname, int value)
 {
-	//std::cout << "Default for " << argname << " (int): " << value << "\n";
 	this->ints[argname] = value;
 }
 
 void ArgParser::add(const std::string& argname, double value)
 {
-	//std::cout << "Default for " << argname << " (double): " << value << "\n";
 	this->doubles[argname] = value;
 }
 
@@ -34,7 +31,6 @@ void ArgParser::add(const std::string& argname, const char* value)
 
 void ArgParser::add(const std::string& argname, const std::string& value)
 {
-	//std::cout << "Default for " << argname << " (string): " << value << "\n";
 	this->strings[argname] = value;
 }
 
@@ -47,20 +43,15 @@ void ArgParser::parse(int argc, char** argv)
 		if(this->flags.find(argument) != this->flags.end())
 		{
 			this->flags[argument] = !this->flags_default[argument];
-			//std::cout << argument << " flag is " << this->flags[argument] << "\n";
 			continue;
 		}
 
 		++arg;
-		std::string value;
-		try
-		{
-			value = std::string(argv[arg]);
-		}
-		catch(...)
+		if(argc <= arg)
 		{
 			throw std::runtime_error("No value given for " + argument);
 		}
+		std::string value = argv[arg];
 
 		if(this->ints.find(argument) != this->ints.end())
 		{
@@ -80,30 +71,26 @@ void ArgParser::parse(int argc, char** argv)
 			continue;
 		}
 
-		throw std::runtime_error("Invalid argument: " + argument);
+		throw std::runtime_error("Unknown argument: " + argument);
 	}
 }
 
 const bool ArgParser::get_bool(const std::string& argname)
 {
-	//std::cout << "Got " << argname << " (bool): " << this->flags[argname] << "\n";
 	return this->flags[argname];
 }
 
 const int ArgParser::get_int(const std::string& argname)
 {
-	//std::cout << "Got " << argname << " (int): " << this->ints[argname] << "\n";
 	return this->ints[argname];
 }
 
 const double ArgParser::get_double(const std::string& argname)
 {
-	//std::cout << "Got " << argname << " (double): " << this->doubles[argname] << "\n";
 	return this->doubles[argname];
 }
 
 const std::string ArgParser::get_string(const std::string& argname)
 {
-	//std::cout << "Got " << argname << " (string): " << this->strings[argname] << "\n";
 	return this->strings[argname];
 }
