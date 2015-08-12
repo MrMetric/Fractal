@@ -129,7 +129,7 @@ constexpr kompleks operator *(const kompleks& x, const kompleks& y)
 	(a + bi)(c + di)
 	ac + bci + adi + bidi
 	ac + bci + adi - bd
-	ac - bd + (ad + bc)i
+	(ac - bd) + (ad + bc)i
 	*/
 
 	return kompleks(x.real * y.real - x.imag * y.imag, x.real * y.imag + x.imag * y.real);
@@ -154,21 +154,17 @@ constexpr kompleks operator /(const kompleks& x, const kompleks& y)
 
 const kompleks operator ^(kompleks x, kompleks_type y)
 {
-	if((int)y != y)
+	int n = static_cast<int>(y);
+	if(n != y)
 	{
 		return pow(x.to_std(), y);
 	}
 	//return pow(x.to_std(), (int)y);
-	int n = (int)y;
 	if(n == 0)
 	{
 		return 1;
 	}
-	if(x.real == 0 && x.imag == 0)
-	{
-		return 0;
-	}
-	if(n == 1)
+	if(x == 0 || n == 1)
 	{
 		return x;
 	}
@@ -207,103 +203,9 @@ const kompleks operator ^(kompleks x, kompleks_type y)
 	return result;
 }
 
-kompleks std_sinh(const kompleks& z)
+kompleks sinh(const kompleks& z)
 {
 	const kompleks_type x = z.real;
 	const kompleks_type y = z.imag;
 	return kompleks(sinh(x) * cos(y), cosh(x) * sin(y));
-}
-
-/*kompleks std_sqrt(const kompleks& z)
-{
-	kompleks_type x = z.real;
-	kompleks_type y = z.imag;
-
-	if (x == kompleks_type())
-	{
-		kompleks_type t = sqrt(abs(y) / 2);
-		return kompleks(t, y < kompleks_type() ? -t : t);
-	}
-	else
-	{
-		kompleks_type t = sqrt(2 * (z.abs() + abs(x)));
-		kompleks_type u = t / 2;
-		return x > kompleks_type()
-			? kompleks(u, y / t)
-			: kompleks(abs(y) / t, y < kompleks_type() ? -u : u);
-	}
-}*/
-
-void testkompleks()
-{
-	kompleks x(1, 2);
-	kompleks y(3, -4);
-	std::complex<double> x2(x.real, x.imag);
-	std::complex<double> y2(y.real, y.imag);
-
-	std::cout << "x = " << x << " : " << x2 << "\n";
-	std::cout << "y = " << y << " : " << y2 << "\n";
-	std::cout << "\n";
-
-	std::cout << "x + 2 = " << (x + 2) << " : " << (x2 + 2.0) << "\n";
-	std::cout << "2 + x = " << (2 + x) << " : " << (2.0 + x2) << "\n";
-	std::cout << "\n";
-	std::cout << "x + y = " << (x + y) << " : " << (x2 + y2) << "\n";
-	std::cout << "y + x = " << (y + x) << " : " << (y2 + x2) << "\n";
-	std::cout << "\n";
-
-	std::cout << "x - 2 = " << (x - 2) << " : " << (x2 - 2.0) << "\n";
-	std::cout << "2 - x = " << (2 - x) << " : " << (2.0 - x2) << "\n";
-	std::cout << "\n";
-	std::cout << "x - y = " << (x - y) << " : " << (x2 - y2) << "\n";
-	std::cout << "y - x = " << (y - x) << " : " << (y2 - x2) << "\n";
-	std::cout << "\n";
-
-	std::cout << "x * 2 = " << (x * 2) << " : " << (x2 * 2.0) << "\n";
-	std::cout << "2 * x = " << (2 * x) << " : " << (2.0 * x2) << "\n";
-	std::cout << "\n";
-	std::cout << "x * y = " << (x * y) << " : " << (x2 * y2) << "\n";
-	std::cout << "y * x = " << (y * x) << " : " << (y2 * x2) << "\n";
-	std::cout << "\n";
-
-	std::cout << "x / 2 = " << (x / 2) << " : " << (x2 / 2.0) << "\n";
-	std::cout << "2 / x = " << (2 / x) << " : " << (2.0 / x2) << "\n";
-	std::cout << "\n";
-	std::cout << "x / y = " << (x / y) << " : " << (x2 / y2) << "\n";
-	std::cout << "y / x = " << (y / x) << " : " << (y2 / x2) << "\n";
-	std::cout << "\n";
-
-	std::cout << "abs(x) = " << x.abs() << " : " << abs(x2) << "\n";
-	std::cout << "abs(y) = " << y.abs() << " : " << abs(y2) << "\n";
-	std::cout << "\n";
-	std::cout << "x conjugate = " << x.conjugate() << "\n";
-	std::cout << "y conjugate = " << y.conjugate() << "\n";
-	std::cout << "\n";
-	std::cout << "arg(x) = " << x.arg() << " : " << arg(x2) << "\n";
-	std::cout << "arg(y) = " << y.arg() << " : " << arg(y2) << "\n";
-	std::cout << "\n";
-
-	std::cout << "x^-1 = " << (x^-1) << " : " << pow(x2, -1) << "\n";
-	std::cout << "x^0 = " << (x^0) << " : " << pow(x2, 0) << "\n";
-	std::cout << "x^1 = " << (x^1) << " : " << pow(x2, 1) << "\n";
-	std::cout << "x^2 = " << (x^2) << " : " << pow(x2, 2) << "\n";
-	std::cout << "x^2.5 = " << (x^2.5) << " : " << pow(x2, 2.5) << "\n";
-	std::cout << "x^3 = " << (x^3) << " : " << pow(x2, 3) << "\n";
-	std::cout << "\n";
-
-	// test zero
-	kompleks z(0, 0);
-	std::complex<double> z2(0, 0);
-	std::cout << "z = " << z << " : " << z2 << "\n";
-	std::cout << "\n";
-
-	std::cout << "z / 2 = " << (z / 2) << " : " << (z2 / 2.0) << "\n";
-	std::cout << "2 / z = " << (2 / z) << " : " << (2.0 / z2) << "\n";
-	std::cout << "\n";
-
-	std::cout << "abs(z) = " << z.abs() << " : " << (abs(z2)) << "\n";
-	std::cout << "arg(z) = " << z.arg() << " : " << (arg(z2)) << "\n";
-	std::cout << "z^0 = " << (z^0) << " : " << pow(z2, 0) << "\n";
-	//std::cout << "0^z = " << (0^z) << " : " << pow(0, z2) << "\n";
-	std::cout << "z^2 = " << (z^2) << " : " << pow(z2, 2) << "\n";
 }
