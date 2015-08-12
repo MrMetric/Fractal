@@ -1035,7 +1035,7 @@ int main(int argc, char** argv)
 	{
 		argp.parse(argc, argv);
 	}
-	catch(std::runtime_error e)
+	catch(std::runtime_error& e)
 	{
 		std::cerr << e.what() << "\n";
 		return 1;
@@ -1060,7 +1060,7 @@ int main(int argc, char** argv)
 	{
 		fractal_opt.type = string_to_fractal_type(argp.get_string("-t").c_str());
 	}
-	catch(std::runtime_error e)
+	catch(std::runtime_error& e)
 	{
 		std::cerr << e.what() << "\n";
 		return 1;

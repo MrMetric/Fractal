@@ -60,7 +60,7 @@ bool operator ==(const kompleks& x, const kompleks& y)
 	return x.real == y.real && x.imag == y.imag;
 }
 
-std::ostream& operator <<(std::ostream &o, const kompleks x)
+std::ostream& operator <<(std::ostream& o, const kompleks& x)
 {
 	if(x.imag < 0)
 	{
@@ -83,7 +83,7 @@ constexpr kompleks operator +(const kompleks_type y, const kompleks& x)
 }
 
 // + complex
-constexpr kompleks operator +(const kompleks& x, const kompleks y)
+constexpr kompleks operator +(const kompleks& x, const kompleks& y)
 {
 	return kompleks(x.real + y.real, x.imag + y.imag);
 }
@@ -104,7 +104,7 @@ constexpr kompleks operator -(const kompleks_type y, const kompleks& x)
 }
 
 // - complex
-constexpr kompleks operator -(const kompleks& x, const kompleks y)
+constexpr kompleks operator -(const kompleks& x, const kompleks& y)
 {
 	return kompleks(x.real - y.real, x.imag - y.imag);
 }
@@ -114,7 +114,7 @@ constexpr kompleks operator *(const kompleks& x, const kompleks_type y)
 {
 	return kompleks(x.real * y, x.imag * y);
 }
-constexpr kompleks operator *(const kompleks_type y, const kompleks x)
+constexpr kompleks operator *(const kompleks_type y, const kompleks& x)
 {
 	return x * y;
 }
@@ -186,7 +186,7 @@ const kompleks operator ^(kompleks x, kompleks_type y)
 	}*/
 
 	// copied from std::complex
-	kompleks result = n % 2 ? x : 1;
+	kompleks result = (n % 2) ? x : 1;
 	while(n >>= 1)
 	{
 		x = x*x;
