@@ -706,8 +706,76 @@ uint_fast32_t width_px = 512;
 uint_fast32_t height_px = 512;
 uint_fast64_t max_iterations = 1024;
 uint_fast32_t pCheck = 1; // periodicity checking
-
 bool cancel = false;
+
+std::string make_filename(uint_fast64_t max_n, uint_fast64_t not_escaped)
+{
+	std::stringstream ss;
+	ss << "tiles/" << type_strings[fractal_opt.type] << "/" << color_opt.method << "/";
+
+	if(fractal_opt.single)
+	{
+		ss << "single_";
+	}
+	ss << "e" << fractal_opt.exponent;
+
+	if(fractal_opt.lbound != -2)
+	{
+		ss << "_lb" << fractal_opt.lbound;
+	}
+	if(fractal_opt.rbound != 2)
+	{
+		ss << "_rb" << fractal_opt.rbound;
+	}
+	if(fractal_opt.bbound != -2)
+	{
+		ss << "_bb" << fractal_opt.bbound;
+	}
+	if(fractal_opt.ubound != 2)
+	{
+		ss << "_ub" << fractal_opt.ubound;
+	}
+
+	if(fractal_opt.type == julia)
+	{
+		ss << "_jx" << fractal_opt.juliaA << "_jy" << fractal_opt.juliaB;
+	}
+	if(color_opt.method == 1 && color_opt.disable_fancy)
+	{
+		ss << "_df";
+	}
+
+	if(!fractal_opt.single)
+	{
+		ss << "_el" << fractal_opt.escape_limit;
+	}
+	ss << "_mi" << (fractal_opt.single ? max_iterations : max_n);
+
+	if((color_opt.method == 0 || color_opt.method == 1) && color_opt.smooth)
+	{
+		ss << "_smooth";
+	}
+	ss << "_" << width_px << "x";
+	if(width_px != height_px)
+	{
+		ss << height_px;
+	}
+	if(color_opt.multiplier != 1)
+	{
+		ss << "_cm" << color_opt.multiplier;
+	}
+	if(cancel)
+	{
+		ss << "_partial";
+	}
+	else if(fractal_opt.type == mandelbrot && not_escaped == 0 && !fractal_opt.single)
+	{
+		ss << "_0ne";
+	}
+	ss << ".png";
+	return ss.str();
+}
+
 void createFractal()
 {
 	double width = (fractal_opt.rbound - fractal_opt.lbound);
@@ -860,77 +928,11 @@ void createFractal()
 
 	std::cout << "\r" << startString << " saving..." << std::flush;
 
-	// make filename
-	ss.clear();
-	ss.str("");
-	ss << "tiles/" << type_strings[fractal_opt.type] << "/" << color_opt.method << "/";
-
-	if(fractal_opt.single)
-	{
-		ss << "single_";
-	}
-	ss << "e" << fractal_opt.exponent;
-
-	if(fractal_opt.lbound != -2)
-	{
-		ss << "_lb" << fractal_opt.lbound;
-	}
-	if(fractal_opt.rbound != 2)
-	{
-		ss << "_rb" << fractal_opt.rbound;
-	}
-	if(fractal_opt.bbound != -2)
-	{
-		ss << "_bb" << fractal_opt.bbound;
-	}
-	if(fractal_opt.ubound != 2)
-	{
-		ss << "_ub" << fractal_opt.ubound;
-	}
-
-	if(fractal_opt.type == julia)
-	{
-		ss << "_jx" << fractal_opt.juliaA << "_jy" << fractal_opt.juliaB;
-	}
-	if(color_opt.method == 1 && color_opt.disable_fancy)
-	{
-		ss << "_df";
-	}
-
-	if(!fractal_opt.single)
-	{
-		ss << "_el" << fractal_opt.escape_limit;
-	}
-	ss << "_mi" << (fractal_opt.single ? max_iterations : max_n);
-
-	if((color_opt.method == 0 || color_opt.method == 1) && color_opt.smooth)
-	{
-		ss << "_smooth";
-	}
-	ss << "_" << width_px << "x";
-	if(width_px != height_px)
-	{
-		ss << height_px;
-	}
-	if(color_opt.multiplier != 1)
-	{
-		ss << "_cm" << color_opt.multiplier;
-	}
-	if(cancel)
-	{
-		ss << "_partial";
-	}
-	else if(fractal_opt.type == mandelbrot && not_escaped == 0 && !fractal_opt.single)
-	{
-		ss << "_0ne";
-	}
-	ss << ".png";
-
-	image.write(ss.str());
+	std::string filename = make_filename(max_n, not_escaped);
+	image.write(filename);
 
 	double seconds = ts.tv_sec + ts.tv_nsec / 1e9;
-
-	std::cout << " done in " << seconds << " second" << (seconds != 1 ? "s":"");
+	std::cout << " done in " << seconds << " second" << (seconds != 1 ? "s" : "");
 	std::cout << " (" << escaped << " e, " << not_escaped << " ne, " << periodic << " p, " << skipped << " s, " << run << " i, " << max_n << " mi)\n";
 
 	if(!cancel)
