@@ -81,17 +81,33 @@ struct FractalOptions
 	static FractalType type;
 	static kompleks_type exponent;
 	static kompleks_type escape_limit;
+	static bool single;
+	static kompleks_type lbound;
+	static kompleks_type rbound;
+	static kompleks_type bbound;
+	static kompleks_type ubound;
+	static kompleks_type juliaA;
+	static kompleks_type juliaB;
 } fractal_opt;
 FractalType FractalOptions::type = mandelbrot;
 kompleks_type FractalOptions::exponent = 2;
 kompleks_type FractalOptions::escape_limit = 4;
+bool FractalOptions::single = false;
+kompleks_type FractalOptions::lbound = 2;
+kompleks_type FractalOptions::rbound = 2;
+kompleks_type FractalOptions::bbound = 2;
+kompleks_type FractalOptions::ubound = 2;
+kompleks_type FractalOptions::juliaA = -0.8;
+kompleks_type FractalOptions::juliaB = 0.156;
 
 struct ColorOptions
 {
+	static uint_fast16_t method;
 	static bool smooth;
 	static bool disable_fancy;
 	static kompleks_type multiplier;
 } color_opt;
+uint_fast16_t ColorOptions::method = 0;
 bool ColorOptions::smooth = false;
 bool ColorOptions::disable_fancy = false;
 kompleks_type ColorOptions::multiplier = 1;
@@ -689,16 +705,13 @@ bool can_skip(kompleks_type x, kompleks_type y)
 uint_fast32_t width_px = 512;
 uint_fast32_t height_px = 512;
 uint_fast64_t max_iterations = 1024;
-bool single = false;
 uint_fast32_t pCheck = 1; // periodicity checking
 
 bool cancel = false;
-void createFractal(
-	kompleks_type lbound, kompleks_type rbound, kompleks_type bbound, kompleks_type ubound,
-	uint_fast32_t color_method, kompleks_type juliaA, kompleks_type juliaB)
+void createFractal()
 {
-	double width = (rbound - lbound);
-	double height = (ubound - bbound);
+	double width = (fractal_opt.rbound - fractal_opt.lbound);
+	double height = (fractal_opt.ubound - fractal_opt.bbound);
 	double xinterval = width / width_px;
 	double yinterval = height / height_px;
 
@@ -750,10 +763,10 @@ void createFractal(
 				time(&statusT2);
 			}
 
-			kompleks_type x = lbound + pX * xinterval + xinterval / 2;
-			kompleks_type y = ubound - pY * yinterval - yinterval / 2;
+			kompleks_type x = fractal_opt.lbound + pX * xinterval + xinterval / 2;
+			kompleks_type y = fractal_opt.ubound - pY * yinterval - yinterval / 2;
 
-			if(!single && fractal_opt.type == mandelbrot && fractal_opt.escape_limit == 4 && can_skip(x, y))
+			if(!fractal_opt.single && fractal_opt.type == mandelbrot && fractal_opt.escape_limit == 4 && can_skip(x, y))
 			{
 				++skipped;
 				//image.set_pixel(pX, pY, png::rgb_pixel(0, 255, 0));
@@ -770,7 +783,7 @@ void createFractal(
 
 				if(fractal_opt.type == julia)
 				{
-					c = kompleks(juliaA, juliaB);
+					c = kompleks(fractal_opt.juliaA, fractal_opt.juliaB);
 				}
 				else
 				{
@@ -782,14 +795,15 @@ void createFractal(
 				for(uint_fast64_t n = 0; n <= max_iterations; ++n)
 				{
 					++run;
-					if((single && n == max_iterations) || (!single && Z.norm() > fractal_opt.escape_limit && n > 0))
+					if((fractal_opt.single && n == max_iterations)
+					|| (!fractal_opt.single && Z.norm() > fractal_opt.escape_limit && n > 0))
 					{
 						++escaped;
 						if(n > max_n)
 						{
 							max_n = n;
 						}
-						image.set_pixel(pX, pY, colorize(color_method, Z, c, n));
+						image.set_pixel(pX, pY, colorize(color_opt.method, Z, c, n));
 						break;
 					}
 					if(n == max_iterations)
@@ -801,18 +815,18 @@ void createFractal(
 
 					Z = iterate(Z, c, n);
 
-					if(!single && pCheck > 0)
+					if(!fractal_opt.single && pCheck > 0)
 					{
 						// if Z has had its current value in a previous iteration, stop iterating
 						if(std::find(pCheckArray, pCheckArray + pCheck, Z) != pCheckArray + pCheck)
 						{
 							++periodic;
-							/*if(fractal_opt.type == neuron && (color_method == 0 || color_method == 1 || color_method == 9))
+							/*if(fractal_opt.type == neuron && (color_opt.method == 0 || color_opt.method == 1 || color_opt.method == 9))
 							{
 								image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
 							}*/
 							//image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
-							//image.set_pixel(pX, pY, colorize(color_method, Z, c, UINT64_MAX));
+							//image.set_pixel(pX, pY, colorize(color_opt.method, Z, c, UINT64_MAX));
 							goto end_iteration; // double break
 						}
 						// shift array
@@ -849,47 +863,47 @@ void createFractal(
 	// make filename
 	ss.clear();
 	ss.str("");
-	ss << "tiles/" << type_strings[fractal_opt.type] << "/" << color_method << "/";
+	ss << "tiles/" << type_strings[fractal_opt.type] << "/" << color_opt.method << "/";
 
-	if(single)
+	if(fractal_opt.single)
 	{
 		ss << "single_";
 	}
 	ss << "e" << fractal_opt.exponent;
 
-	if(lbound != -2)
+	if(fractal_opt.lbound != -2)
 	{
-		ss << "_lb" << lbound;
+		ss << "_lb" << fractal_opt.lbound;
 	}
-	if(rbound != 2)
+	if(fractal_opt.rbound != 2)
 	{
-		ss << "_rb" << rbound;
+		ss << "_rb" << fractal_opt.rbound;
 	}
-	if(bbound != -2)
+	if(fractal_opt.bbound != -2)
 	{
-		ss << "_bb" << bbound;
+		ss << "_bb" << fractal_opt.bbound;
 	}
-	if(ubound != 2)
+	if(fractal_opt.ubound != 2)
 	{
-		ss << "_ub" << ubound;
+		ss << "_ub" << fractal_opt.ubound;
 	}
 
 	if(fractal_opt.type == julia)
 	{
-		ss << "_jx" << juliaA << "_jy" << juliaB;
+		ss << "_jx" << fractal_opt.juliaA << "_jy" << fractal_opt.juliaB;
 	}
-	if(color_method == 1 && color_opt.disable_fancy)
+	if(color_opt.method == 1 && color_opt.disable_fancy)
 	{
 		ss << "_df";
 	}
 
-	if(!single)
+	if(!fractal_opt.single)
 	{
 		ss << "_el" << fractal_opt.escape_limit;
 	}
-	ss << "_mi" << (single ? max_iterations : max_n);
+	ss << "_mi" << (fractal_opt.single ? max_iterations : max_n);
 
-	if((color_method == 0 || color_method == 1) && color_opt.smooth)
+	if((color_opt.method == 0 || color_opt.method == 1) && color_opt.smooth)
 	{
 		ss << "_smooth";
 	}
@@ -906,7 +920,7 @@ void createFractal(
 	{
 		ss << "_partial";
 	}
-	else if(fractal_opt.type == mandelbrot && not_escaped == 0 && !single)
+	else if(fractal_opt.type == mandelbrot && not_escaped == 0 && !fractal_opt.single)
 	{
 		ss << "_0ne";
 	}
@@ -1043,16 +1057,16 @@ int main(int argc, char** argv)
 
 	color_opt.disable_fancy = argp.get_bool("-df");
 	color_opt.smooth = argp.get_bool("-s");
-	single = argp.get_bool("-S");
+	fractal_opt.single = argp.get_bool("-S");
 
-	uint_fast32_t color_method = argp.get_int("-c");
+	color_opt.method = argp.get_int("-c");
 
 	color_opt.multiplier		= argp.get_double("-cm");
 	fractal_opt.exponent		= argp.get_double("-e");
 	fractal_opt.escape_limit	= argp.get_double("-el");
 	max_iterations				= argp.get_int("-i");
-	double juliaA				= argp.get_double("-jx");
-	double juliaB				= argp.get_double("-jy");
+	fractal_opt.juliaA				= argp.get_double("-jx");
+	fractal_opt.juliaB				= argp.get_double("-jy");
 	pCheck						= argp.get_int("-pc");
 	width_px					= height_px = argp.get_int("-r");
 	width_px					= std::round(width_px * argp.get_double("-wm"));
@@ -1079,6 +1093,10 @@ int main(int argc, char** argv)
 		bbound = argp.get_double("-bbound");
 		ubound = argp.get_double("-ubound");
 	}
+	fractal_opt.lbound = lbound;
+	fractal_opt.rbound = rbound;
+	fractal_opt.bbound = bbound;
+	fractal_opt.ubound = ubound;
 
 	// end arguments
 
@@ -1090,7 +1108,7 @@ int main(int argc, char** argv)
 	ss << "/" << type_strings[fractal_opt.type];
 	create_directory(ss.str());
 
-	ss << "/" << color_method;
+	ss << "/" << color_opt.method;
 	create_directory(ss.str());
 
 	// if Ctrl+C is pressed, stop iteration and save partial image
@@ -1106,7 +1124,7 @@ int main(int argc, char** argv)
 	sigIntHandler.sa_flags = 0;
 	sigaction(SIGINT, &sigIntHandler, NULL);
 
-	createFractal(lbound, rbound, bbound, ubound, color_method, juliaA, juliaB);
+	createFractal();
 
 	return 0;
 }
