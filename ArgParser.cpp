@@ -1,5 +1,6 @@
 #include "ArgParser.hpp"
 #include <exception>
+#include <stdexcept>
 #include <sstream>
 //#include <iostream>
 
