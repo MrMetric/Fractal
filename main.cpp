@@ -16,7 +16,7 @@
 #include <exception>
 #include "ArgParser.hpp"
 
-#include <stdint.h>
+#include <cstdint>
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
