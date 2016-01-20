@@ -51,6 +51,7 @@
 		</Linker>
 		<Unit filename="ArgParser.cpp" />
 		<Unit filename="ArgParser.hpp" />
+		<Unit filename="kompleks.cpp" />
 		<Unit filename="kompleks.hpp" />
 		<Unit filename="main.cpp" />
 		<Extensions>
