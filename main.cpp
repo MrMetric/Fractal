@@ -18,50 +18,48 @@
 
 #include <cstdint>
 
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
+using int128_t = __int128;
+using uint128_t = unsigned __int128;
 
-inline void clearLine(uint_fast32_t spaces)
+const int128_t INT128_MAX = static_cast<int128_t>(((uint128_t) 1 << ((__SIZEOF_INT128__ * __CHAR_BIT__) - 1)) - 1);
+
+inline void clear_line(uint_fast32_t spaces)
 {
 	std::cout << "\r" << std::string(spaces, ' ') << std::flush;
 }
 
+#define FRACTAL_TYPE \
+	X(mandelbrot, "mandelbrot") \
+	X(julia, "julia") \
+	X(burning_ship, "burning ship") \
+	X(tricorn, "tricorn") \
+	X(neuron, "neuron") \
+	X(clouds, "clouds") \
+	X(oops, "oops") \
+	X(stupidbrot, "stupidbrot") \
+	X(untitled1, "untitled 1") \
+	X(dots, "dots") \
+	X(magnet1, "magnet 1") \
+	X(experiment, "experiment") \
+	X(mandelbox, "mandelbox") \
+	X(negamandelbrot, "negamandelbrot") \
+	X(collatz, "collatz") \
+	X(experiment2, "experiment2")
+
+#define X(a, b) a,
 enum FractalType
 {
-	mandelbrot,
-	julia,
-	burning_ship,
-	tricorn,
-	neuron,
-	clouds,
-	oops,
-	stupidbrot,
-	untitled1,
-	dots,
-	magnet1,
-	experiment,
-	mandelbox,
-	negamandelbrot,
+	FRACTAL_TYPE
 };
+#undef X
 
-const uint_fast8_t type_string_count = 14;
-const char* type_strings[type_string_count] =
+#define X(a, b) b,
+static const char* type_strings[] =
 {
-	"mandelbrot",
-	"julia",
-	"burning ship",
-	"tricorn",
-	"neuron",
-	"clouds",
-	"oops",
-	"stupidbrot",
-	"untitled 1",
-	"dots",
-	"magnet 1",
-	"experiment",
-	"mandelbox",
-	"negamandelbrot",
+	FRACTAL_TYPE
 };
+#undef X
+const uint_fast8_t type_string_count = sizeof(type_strings) / sizeof(type_strings[0]);
 
 FractalType string_to_fractal_type(const char* typestr)
 {
@@ -76,7 +74,7 @@ FractalType string_to_fractal_type(const char* typestr)
 	throw std::runtime_error("Unknown fractal type: " + std::string(typestr));
 }
 
-struct FractalOptions
+static struct FractalOptions
 {
 	static FractalType type;
 	static kompleks_type exponent;
@@ -100,20 +98,22 @@ kompleks_type FractalOptions::ubound = 2;
 kompleks_type FractalOptions::juliaA = -0.8;
 kompleks_type FractalOptions::juliaB = 0.156;
 
-struct ColorOptions
+static struct ColorOptions
 {
 	static uint_fast16_t method;
 	static bool smooth;
 	static bool disable_fancy;
 	static kompleks_type multiplier;
+	static bool use_log;
 } color_opt;
 uint_fast16_t ColorOptions::method = 0;
 bool ColorOptions::smooth = false;
 bool ColorOptions::disable_fancy = false;
 kompleks_type ColorOptions::multiplier = 1;
+bool ColorOptions::use_log = false;
 
 // https://github.com/kobalicek/rgbhsv/blob/master/src/rgbhsv.cpp
-void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t dst[3])
+void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t* dst)
 {
 	if(h >= 1)
 	{
@@ -122,10 +122,10 @@ void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t dst
 	h *= 6;
 
 	uint_fast8_t index = static_cast<uint_fast8_t>(h);
-	double f = h - static_cast<double>(index);
-	double p = (v * (1.0f - s)) * 255;
-	double q = (v * (1.0f - s * f)) * 255;
-	double t = (v * (1.0f - s * (1.0f - f))) * 255;
+	kompleks_type f = h - static_cast<kompleks_type>(index);
+	kompleks_type p = (v * (1.0f - s)) * 255;
+	kompleks_type q = (v * (1.0f - s * f)) * 255;
+	kompleks_type t = (v * (1.0f - s * (1.0f - f))) * 255;
 	v *= 255;
 
 	switch(index)
@@ -141,9 +141,9 @@ void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t dst
 
 const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, const kompleks& c, uint_fast64_t n)
 {
-	uint_fast64_t red, green, blue;
-	kompleks_type Zr2 = Z.real*Z.real;
-	kompleks_type Zi2 = Z.imag*Z.imag;
+	kompleks_type red, green, blue;
+	const kompleks_type Zr2 = Z.real*Z.real;
+	const kompleks_type Zi2 = Z.imag*Z.imag;
 	switch(color_method)
 	{
 		case 0: // escape time (gold)
@@ -151,11 +151,11 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			if(color_opt.smooth)
 			{
 				// from http://www.hpdz.net/TechInfo/Colorizing.htm#FractionalCounts
-				kompleks_type dx = (log(log(fractal_opt.escape_limit)) - log(log(Z.abs()))) / log(fractal_opt.exponent);
+				kompleks_type dx = (std::log(std::log(fractal_opt.escape_limit)) - std::log(std::log(Z.abs()))) / std::log(fractal_opt.exponent);
 				kompleks_type nprime = n + dx;
-				red = round(nprime * 2);
-				green = round(nprime);
-				blue = round(nprime / 2);
+				red = std::round(nprime * 2);
+				green = std::round(nprime);
+				blue = std::round(nprime / 2);
 			}
 			else
 			{
@@ -180,8 +180,8 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			if(color_opt.smooth)
 			{
-				kompleks_type dx = (log(log(fractal_opt.escape_limit)) - log(log(Z.abs()))) / log(fractal_opt.exponent);
-				green = round(n + dx);
+				kompleks_type dx = (std::log(std::log(fractal_opt.escape_limit)) - std::log(std::log(Z.abs()))) / std::log(fractal_opt.exponent);
+				green = std::round(n + dx);
 			}
 			else
 			{
@@ -189,12 +189,12 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			if(green > 255)
 			{
-				uint_fast32_t difference = green - 255;
+				kompleks_type difference = green - 255;
 				green = 255;
-				blue = difference << 1;
+				blue = difference * 2;
 				if(blue > 255)
 				{
-					red = blue << 1;
+					red = blue * 2;
 					blue = 200;
 					green = 200;
 				}
@@ -207,7 +207,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			green = Zr2 + Zi2;
 			if(Zi2 == 0)
 			{
-				blue = 255;
+				blue = INFINITY;
 			}
 			else
 			{
@@ -219,8 +219,8 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 		{
 			if(Zr2 == 0)
 			{
-				red = 255;
-				green = 255;
+				red = INFINITY;
+				green = INFINITY;
 			}
 			else
 			{
@@ -232,7 +232,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 		}
 		case 4: // Ben
 		{
-			red = green = blue = Z.real * sin(Z.imag + Zi2) - Zr2;
+			red = green = blue = Z.real * std::sin(Z.imag + Zi2) - Zr2;
 			break;
 		}
 		case 5: // Glow (Green)
@@ -243,7 +243,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				red = round(1 / Zr2);
+				red = std::round(1 / Zr2);
 			}
 			if(Zr2 <= 0.00588)
 			{
@@ -251,7 +251,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				green = round(1.5 / Zr2);
+				green = std::round(1.5 / Zr2);
 			}
 			if(Zr2 <= 0.00294)
 			{
@@ -259,7 +259,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				blue = round(0.75 / Zr2);
+				blue = std::round(0.75 / Zr2);
 			}
 			break;
 		}
@@ -271,7 +271,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				red = round(1.5 / Zr2);
+				red = std::round(1.5 / Zr2);
 			}
 			if(Zr2 == 0)
 			{
@@ -279,7 +279,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				green = round(0.75 / Zr2);
+				green = std::round(0.75 / Zr2);
 			}
 			if(Zr2 == 0)
 			{
@@ -287,7 +287,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				blue = round(1 / Zr2);
+				blue = std::round(1 / Zr2);
 			}
 			break;
 		}
@@ -299,7 +299,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				red = round(0.75 / Zr2);
+				red = std::round(0.75 / Zr2);
 			}
 			if(Zr2 <= 0.00392)
 			{
@@ -307,7 +307,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				green = round(1 / Zr2);
+				green = std::round(1 / Zr2);
 			}
 			if(Zr2 <= 0.00588)
 			{
@@ -315,7 +315,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				blue = round(1.5 / Zr2);
+				blue = std::round(1.5 / Zr2);
 			}
 			break;
 		}
@@ -323,7 +323,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 		{
 			if(Zr2 == 0)
 			{
-				red = 255; // TODO: UINT64_MAX?
+				red = INFINITY; // TODO: UINT64_MAX?
 			}
 			else
 			{
@@ -331,13 +331,21 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			if(Zi2 == 0)
 			{
-				green = 255;
+				green = INFINITY;
 			}
 			else
 			{
 				green = Zr2 / Zi2 + n;
 			}
-			blue = static_cast<uint_fast64_t>(round(Zi2 * 255)) ^ static_cast<uint_fast64_t>(round(Zr2 * 255));
+			// TODO: stop using integers here
+			if(Zi2 > INT128_MAX / 255 || Zr2 > INT128_MAX / 255)
+			{
+				blue = INT128_MAX;
+			}
+			else
+			{
+				blue = static_cast<int128_t>(std::round(Zi2 * 255)) ^ static_cast<int128_t>(std::round(Zr2 * 255));
+			}
 			red += blue * 0.5;
 			green += blue * 0.2;
 			break;
@@ -349,9 +357,9 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 						  green_fractal = color_fractal.green,
 						  blue_fractal = color_fractal.blue;
 
-			red = static_cast<uint_fast64_t>(round(Zr2*8)) ^ static_cast<uint_fast64_t>(round(Zi2*8));
-			green = static_cast<uint_fast64_t>(round(Zr2*2)) ^ static_cast<uint_fast64_t>(round(Zi2*2));
-			blue = static_cast<uint_fast64_t>(round(Zr2*4)) ^ static_cast<uint_fast64_t>(round(Zi2*4));
+			red = static_cast<uint_fast64_t>(std::round(Zr2*8)) ^ static_cast<uint_fast64_t>(std::round(Zi2*8));
+			green = static_cast<uint_fast64_t>(std::round(Zr2*2)) ^ static_cast<uint_fast64_t>(std::round(Zi2*2));
+			blue = static_cast<uint_fast64_t>(std::round(Zr2*4)) ^ static_cast<uint_fast64_t>(std::round(Zi2*4));
 
 			// darken the colors a bit
 			red *= 0.7;
@@ -365,7 +373,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				blue_stripe = static_cast<uint_fast64_t>(round(Zi2 / Zr2));
+				blue_stripe = static_cast<uint_fast64_t>(std::round(Zi2 / Zr2));
 			}
 			uint_fast64_t green_stripe;
 			if(Zi2 == 0)
@@ -374,7 +382,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			}
 			else
 			{
-				green_stripe = static_cast<uint_fast64_t>(round(Zr2 / Zi2));
+				green_stripe = static_cast<uint_fast64_t>(std::round(Zr2 / Zi2));
 			}
 			green_stripe += blue_stripe;
 
@@ -447,11 +455,12 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 		}
 		case 15: // hue
 		{
-			uint_fast8_t colors[3];
+			uint_fast8_t* colors = new uint_fast8_t[3];
 			HSV2RGB((n % 32) / 32.0, 1, 1, colors);
 			red = colors[0];
 			green = colors[1];
 			blue = colors[2];
+			delete[] colors;
 			break;
 		}
 		case 16:
@@ -463,9 +472,9 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 		}
 		case 17:
 		{
-			double r = 2 * sin(Zr2);
-			double g = 2 * cos(Zi2);
-			double b = r * g;
+			kompleks_type r = 2 * std::sin(Zr2);
+			kompleks_type g = 2 * std::cos(Zi2);
+			kompleks_type b = r * g;
 			red = r * 127;
 			green = g * 127;
 			blue = b * 127;
@@ -477,8 +486,16 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 		}
 	}
 
+	if(color_opt.use_log)
+	{
+		red = std::log(red);
+		green = std::log(green);
+		blue = std::log(blue);
+	}
+
 	if(color_method != 9)
 	{
+		/*
 		if(color_opt.multiplier > 1)
 		{
 			uint_fast64_t max = UINT_FAST64_MAX / color_opt.multiplier; // prevent overflow
@@ -487,6 +504,7 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 			blue = blue > max ? UINT_FAST64_MAX : blue * color_opt.multiplier;
 		}
 		else
+		*/
 		{
 			red *= color_opt.multiplier;
 			green *= color_opt.multiplier;
@@ -498,16 +516,34 @@ const png::rgb_pixel colorize(uint_fast32_t color_method, const kompleks& Z, con
 	{
 		red = 255;
 	}
+	else if(red < 0)
+	{
+		red = 0;
+	}
+
 	if(green > 255)
 	{
 		green = 255;
 	}
+	else if(green < 0)
+	{
+		green = 0;
+	}
+
 	if(blue > 255)
 	{
 		blue = 255;
 	}
+	else if(blue < 0)
+	{
+		blue = 0;
+	}
 
-	return png::rgb_pixel(red, green, blue);
+	uint8_t r = static_cast<uint8_t>(std::round(red));
+	uint8_t g = static_cast<uint8_t>(std::round(green));
+	uint8_t b = static_cast<uint8_t>(std::round(blue));
+
+	return png::rgb_pixel(r, g, b);
 }
 
 kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
@@ -521,8 +557,8 @@ kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
 		}
 		case burning_ship:
 		{
-			kompleks_type real_abs = abs(Z.real);
-			kompleks_type imag_abs = abs(Z.imag);
+			kompleks_type real_abs = std::abs(Z.real);
+			kompleks_type imag_abs = std::abs(Z.imag);
 			return (kompleks(real_abs, imag_abs)^fractal_opt.exponent) + c;
 		}
 		case tricorn:
@@ -616,24 +652,35 @@ kompleks iterate(kompleks Z, kompleks& c, uint_fast64_t n)
 		{
 			return (Z^(1 / fractal_opt.exponent)) - c;
 		}
+		case collatz:
+		{
+			return (2.0 + 7.0 * Z - (2.0 + 5.0 * Z) * cos(M_PI * Z)) / 4.0;
+		}
+		case experiment2:
+		{
+			//return kompleks(pow(Z.real, fractal_opt.exponent), pow(Z.imag, fractal_opt.exponent)) + c;
+			return (Z^fractal_opt.exponent) + (c^(1/fractal_opt.exponent));
+		}
 		default:
 		{
-			// TODO: throw an exception
-			return Z;
+			throw std::runtime_error("Unhandled fractal type in iterate: " + std::to_string(fractal_opt.type));
 		}
 	}
 }
 
 bool can_skip(kompleks_type x, kompleks_type y)
 {
+	if(fractal_opt.single || fractal_opt.type != mandelbrot || fractal_opt.escape_limit != 4)
+	{
+		return false;
+	}
+
 	if(fractal_opt.exponent == 2)
 	{
 		kompleks_type y2 = y*y;
 		kompleks_type q = (x - 0.25)*(x - 0.25) + y2;
 		return (q * (q + (x - 0.25)) < 0.25 * y2 // cardioid
 			|| (x+1)*(x+1) + y2 < 0.0625);		 // p2 bulb
-
-		return false;
 	}
 
 	/*
@@ -673,7 +720,7 @@ bool can_skip(kompleks_type x, kompleks_type y)
 		return x < b && x > -b;*/
 
 		kompleks_type y2 = y*y;
-		if(x*x < 4.0/27.0 - y2 + pow(4 * y2, 1.0 / 3.0)/3.0)
+		if(x*x < 4.0/27.0 - y2 + std::pow(4 * y2, 1.0 / 3.0)/3.0)
 		{
 			return true;
 		}
@@ -685,28 +732,27 @@ bool can_skip(kompleks_type x, kompleks_type y)
 		c = z - z^4
 		(∂/∂z) (z^4 + c) = e^(i*θ)
 		4*z^3 = e^(i*θ)
-	I used Mathematica to solve for c and separate its components. As a parametric equation:
-		x(t) = (3*cos(t/2) - cos(3*t/2)) / (3*sqrt(3))
-		y(t) = ±((4*sin(t/2)^3) / (3*sqrt(3)))
-	For some y value, I want the corresponding x value, so I solved for t and got inverse y:
-		t(y) = 2*arcsin(cuberoot(3*sqrt(3)/4 * y))
-	Then I used Mathematica to help simplify:
-		x(t(y)) = ±(sqrt(4/3 - a) * (3a + 2))/6
-		where a = cuberoot(2*y)^2
+
 	*/
 	if(fractal_opt.exponent == 4)
 	{
-		//
+		// partial capture
+		return (x*x + y*y < 0.2232282729330280511369586); // circle with radius = f_x(0)
+	}
+
+	if(fractal_opt.exponent == 5)
+	{
+		return (x*x + y*y < 0.2862167011199730811403742);
 	}
 
 	return false;
 }
 
-uint_fast32_t width_px = 512;
-uint_fast32_t height_px = 512;
-uint_fast64_t max_iterations = 1024;
-uint_fast32_t pCheck = 1; // periodicity checking
-bool cancel = false;
+static uint_fast32_t width_px = 512;
+static uint_fast32_t height_px = 512;
+static uint_fast64_t max_iterations = 1024;
+static uint_fast32_t pCheck = 1; // periodicity checking
+static volatile sig_atomic_t cancel = false;
 
 std::string make_filename(uint_fast64_t max_n, uint_fast64_t not_escaped)
 {
@@ -717,7 +763,10 @@ std::string make_filename(uint_fast64_t max_n, uint_fast64_t not_escaped)
 	{
 		ss << "single_";
 	}
-	ss << "e" << fractal_opt.exponent;
+	//if(fractal_opt.type != collatz) // still leaves an underscore at the beginning
+	{
+		ss << "e" << fractal_opt.exponent;
+	}
 
 	if(fractal_opt.lbound != -2)
 	{
@@ -764,6 +813,10 @@ std::string make_filename(uint_fast64_t max_n, uint_fast64_t not_escaped)
 	{
 		ss << "_cm" << color_opt.multiplier;
 	}
+	if(color_opt.use_log)
+	{
+		ss << "_clog";
+	}
 	if(cancel)
 	{
 		ss << "_partial";
@@ -772,19 +825,33 @@ std::string make_filename(uint_fast64_t max_n, uint_fast64_t not_escaped)
 	{
 		ss << "_0ne";
 	}
+	ss << "_ld"; // long double
 	ss << ".png";
 	return ss.str();
 }
 
+uint_fast32_t print_progress(const std::string& startString, uint_fast64_t currentPoint, uint_fast64_t totalPoints)
+{
+	double percent = static_cast<double>(currentPoint) * 100.0 / totalPoints;
+	std::stringstream ss;
+	ss.precision(3);
+	ss << startString << " point " << currentPoint << " of " << totalPoints << " (" << percent << ")%";
+	std::string status = ss.str();
+	uint_fast32_t spaces = status.length();
+	clear_line(spaces); // shouldn't this use the previous value?
+	std::cout << "\r" << status << std::flush;
+	return spaces;
+}
+
 void createFractal()
 {
-	double width = (fractal_opt.rbound - fractal_opt.lbound);
-	double height = (fractal_opt.ubound - fractal_opt.bbound);
-	double xinterval = width / width_px;
-	double yinterval = height / height_px;
+	kompleks_type width = (fractal_opt.rbound - fractal_opt.lbound);
+	kompleks_type height = (fractal_opt.ubound - fractal_opt.bbound);
+	kompleks_type xinterval = width / width_px;
+	kompleks_type yinterval = height / height_px;
 
-	uint_fast32_t totalPoints = width_px * height_px;
-	uint_fast32_t currentPoint = 0;
+	const uint_fast64_t totalPoints = width_px * height_px;
+	uint_fast64_t currentPoint = 0;
 
 	uint_fast64_t periodic = 0; // amount of periodic points
 	uint_fast64_t escaped = 0; // amount of escaped points
@@ -792,9 +859,9 @@ void createFractal()
 	uint_fast64_t skipped = 0;
 	uint_fast64_t run = 0; // amount of iterations processed
 	uint_fast64_t max_n = 0; // maximum iterations used on a point that escaped
-	kompleks pCheckArray[pCheck];
+	uint_fast64_t max_period = 0;
+	uint_fast64_t max_period_n = 0;
 
-	kompleks c;
 	std::stringstream ss;
 	ss << "Rendering " << type_strings[fractal_opt.type] << "...";
 	std::string startString = ss.str();
@@ -811,19 +878,18 @@ void createFractal()
 	clock_settime(CLOCK_PROCESS_CPUTIME_ID, &ts);
 
 	png::image<png::rgb_pixel> image(width_px, height_px);
+
+	kompleks* pCheckArray = new kompleks[pCheck];
+	kompleks* pCheckEnd = pCheckArray + pCheck;
+	kompleks c;
+
 	for(uint_fast32_t pY = 0; pY < height_px; ++pY)
 	{
 		for(uint_fast32_t pX = 0; pX < width_px; ++pX)
 		{
 			if(difftime(statusT2, statusT1) >= 1)
 			{
-				ss.str("");
-				ss.clear();
-				ss << startString << " point " << currentPoint << " of " << totalPoints;;
-				std::string status = ss.str();
-				spaces = status.length();
-				clearLine(spaces);
-				std::cout << "\r" << status << std::flush;
+				spaces = print_progress(startString, currentPoint, totalPoints);
 				time(&statusT1);
 			}
 			else
@@ -834,7 +900,7 @@ void createFractal()
 			kompleks_type x = fractal_opt.lbound + pX * xinterval + xinterval / 2;
 			kompleks_type y = fractal_opt.ubound - pY * yinterval - yinterval / 2;
 
-			if(!fractal_opt.single && fractal_opt.type == mandelbrot && fractal_opt.escape_limit == 4 && can_skip(x, y))
+			if(can_skip(x, y))
 			{
 				++skipped;
 				//image.set_pixel(pX, pY, png::rgb_pixel(0, 255, 0));
@@ -843,7 +909,8 @@ void createFractal()
 			{
 				kompleks Z;
 				if(fractal_opt.type != clouds // clouds must start at 0; forgetting this resulted in oops
-				&& fractal_opt.type != mandelbrot)
+				&& fractal_opt.type != mandelbrot
+				)
 				{
 					Z.real = x;
 					Z.imag = y;
@@ -886,8 +953,18 @@ void createFractal()
 					if(!fractal_opt.single && pCheck > 0)
 					{
 						// if Z has had its current value in a previous iteration, stop iterating
-						if(std::find(pCheckArray, pCheckArray + pCheck, Z) != pCheckArray + pCheck)
+						kompleks* location = std::find(pCheckArray, pCheckArray + pCheck, Z);
+						if(location != pCheckEnd) // <
 						{
+							uint_fast64_t pCheckIndex = static_cast<uint_fast64_t>(pCheckEnd - location);
+							if(pCheckIndex > max_period)
+							{
+								max_period = pCheckIndex;
+							}
+							if(n > max_period_n)
+							{
+								max_period_n = n;
+							}
 							++periodic;
 							/*if(fractal_opt.type == neuron && (color_opt.method == 0 || color_opt.method == 1 || color_opt.method == 9))
 							{
@@ -922,9 +999,11 @@ void createFractal()
 		}
 	}
 
+	delete[] pCheckArray;
+
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
 
-	clearLine(spaces);
+	clear_line(spaces);
 
 	std::cout << "\r" << startString << " saving..." << std::flush;
 
@@ -933,16 +1012,234 @@ void createFractal()
 
 	double seconds = ts.tv_sec + ts.tv_nsec / 1e9;
 	std::cout << " done in " << seconds << " second" << (seconds != 1 ? "s" : "");
-	std::cout << " (" << escaped << " e, " << not_escaped << " ne, " << periodic << " p, " << skipped << " s, " << run << " i, " << max_n << " mi)\n";
+	std::cout << " (" << escaped << " e, " << not_escaped << " ne, " << periodic << " p, " << max_period << " mp, " << max_period_n << " mpi, " << skipped << " s, " << run << " i, " << max_n << " mi, " << currentPoint << " t)\n";
 
-	if(!cancel)
+	if(escaped + not_escaped + periodic + skipped != currentPoint)
 	{
-		if(escaped + not_escaped + periodic + skipped != totalPoints)
-		{
-			std::cout << "There is a bug somewhere (e + ne + p + s != total)\n";
-		}
+		std::cout << "There is a bug somewhere (e + ne + p + s != total)\n";
 	}
 }
+
+#if 0
+#include <thread>
+#include <atomic>
+
+void createFractal()
+{
+	double width = (fractal_opt.rbound - fractal_opt.lbound);
+	double height = (fractal_opt.ubound - fractal_opt.bbound);
+	double xinterval = width / width_px;
+	double yinterval = height / height_px;
+
+	const uint_fast32_t totalPoints = width_px * height_px;
+	//std::atomic<uint_fast32_t> currentPoint(0);
+
+	std::atomic<uint_fast64_t> periodic(0); // amount of periodic points
+	std::atomic<uint_fast64_t> escaped(0); // amount of escaped points
+	std::atomic<uint_fast64_t> not_escaped(0); // amount of points that did not escape
+	std::atomic<uint_fast64_t> skipped(0);
+	std::atomic<uint_fast64_t> run(0); // amount of iterations processed
+	std::atomic<uint_fast64_t> max_n(0); // maximum iterations used on a point that escaped
+
+	//uint_fast64_t max_iterations_ = max_iterations;
+	//std::atomic<uint_fast64_t> max_iterations(max_iterations_);
+
+	std::stringstream ss;
+	ss << "Rendering " << type_strings[fractal_opt.type] << "...";
+	std::string startString = ss.str();
+	std::cout << startString << std::flush;
+	uint_fast32_t spaces = 0;
+
+	timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 0;
+	clock_settime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+
+	png::image<png::rgb_pixel> image(width_px, height_px);
+
+	auto render_rows = [&](uint_fast32_t min_y, uint_fast32_t max_y)
+	{
+		kompleks pCheckArray[pCheck];
+		kompleks c;
+		uint_fast64_t l_periodic = 0;
+		uint_fast64_t l_escaped = 0;
+		uint_fast64_t l_not_escaped = 0;
+		uint_fast64_t l_skipped = 0;
+		uint_fast64_t l_run = 0;
+		uint_fast64_t l_max_n = 0;
+		for(uint_fast32_t pY = min_y; pY < max_y; ++pY)
+		{
+			for(uint_fast32_t pX = 0; pX < width_px; ++pX)
+			{
+				kompleks_type x = fractal_opt.lbound + pX * xinterval + xinterval / 2;
+				kompleks_type y = fractal_opt.ubound - pY * yinterval - yinterval / 2;
+
+				if(!fractal_opt.single && fractal_opt.type == mandelbrot && fractal_opt.escape_limit == 4 && can_skip(x, y))
+				{
+					++l_skipped;
+					//image.set_pixel(pX, pY, png::rgb_pixel(0, 255, 0));
+				}
+				else
+				{
+					kompleks Z;
+					if(fractal_opt.type != clouds // clouds must start at 0; forgetting this resulted in oops
+					&& fractal_opt.type != mandelbrot
+					)
+					{
+						Z.real = x;
+						Z.imag = y;
+					}
+
+					if(fractal_opt.type == julia)
+					{
+						c = kompleks(fractal_opt.juliaA, fractal_opt.juliaB);
+					}
+					else
+					{
+						c = kompleks(x, y);
+					}
+
+					std::fill_n(pCheckArray, pCheck, Z);
+
+					for(uint_fast64_t n = 0; n <= max_iterations; ++n)
+					{
+						++l_run;
+						if((fractal_opt.single && n == max_iterations)
+						|| (!fractal_opt.single && Z.norm() > fractal_opt.escape_limit && n > 0))
+						{
+							++l_escaped;
+							if(n > l_max_n)
+							{
+								l_max_n = n;
+							}
+							image.set_pixel(pX, pY, colorize(color_opt.method, Z, c, n));
+							break;
+						}
+						if(n == max_iterations)
+						{
+							++l_not_escaped;
+							//image.set_pixel(pX, pY, png::rgb_pixel(255, 0, 0));
+							break;
+						}
+
+						Z = iterate(Z, c, n);
+
+						if(!fractal_opt.single && pCheck > 0)
+						{
+							// if Z has had its current value in a previous iteration, stop iterating
+							if(std::find(pCheckArray, pCheckArray + pCheck, Z) != pCheckArray + pCheck)
+							{
+								++l_periodic;
+								/*if(fractal_opt.type == neuron && (color_opt.method == 0 || color_opt.method == 1 || color_opt.method == 9))
+								{
+									image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
+								}*/
+								//image.set_pixel(pX, pY, png::rgb_pixel(255, 255, 255));
+								//image.set_pixel(pX, pY, colorize(color_opt.method, Z, c, UINT64_MAX));
+								goto end_iteration; // double break
+							}
+							// shift array
+							if(pCheck > 1)
+							{
+								for(uint_fast32_t p = 0; p < pCheck - 1; ++p)
+								{
+									pCheckArray[p] = pCheckArray[p + 1];
+								}
+							}
+							pCheckArray[pCheck - 1] = Z;
+						}
+						if(cancel) // pressed CTRL+C
+						{
+							break;
+						}
+					}
+					end_iteration:;
+				}
+				if(cancel) // pressed CTRL+C
+				{
+					break;
+				}
+				//++currentPoint;
+			}
+		}
+		periodic += l_periodic;
+		escaped += l_escaped;
+		not_escaped += l_not_escaped;
+		skipped += l_skipped;
+		run += l_run;
+		if(l_max_n > max_n)
+		{
+			max_n = l_max_n;
+		}
+	};
+
+	uint_fast32_t part1 = height_px / 2;
+	bool thread_progress[2] = { false, false };
+	std::atomic<bool> all_done(false);
+
+	auto thread_finished = [&](uint_fast8_t id)
+	{
+		thread_progress[id] = true;
+		all_done = thread_progress[0] && thread_progress[1];
+
+		if(all_done)
+		{
+			clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+
+			clear_line(spaces);
+
+			std::cout << "\r" << startString << " saving..." << std::flush;
+
+			std::string filename = make_filename(max_n, not_escaped);
+			image.write(filename);
+
+			double seconds = ts.tv_sec + ts.tv_nsec / 1e9;
+			std::cout << " done in " << seconds << " second" << (seconds != 1 ? "s" : "");
+			std::cout << " (" << escaped << " e, " << not_escaped << " ne, " << periodic << " p, " << skipped << " s, " << run << " i, " << max_n << " mi)\n";
+
+			if(!cancel)
+			{
+				if(escaped + not_escaped + periodic + skipped != totalPoints)
+				{
+					std::cout << "There is a bug somewhere (e + ne + p + s != total)\n";
+				}
+			}
+		}
+	};
+
+	auto render_1 = [&]()
+	{
+		render_rows(0, part1);
+		thread_finished(0);
+	};
+	auto render_2 = [&]()
+	{
+		render_rows(part1, height_px);
+		thread_finished(1);
+	};
+
+	/*auto show_progress = [&]()
+	{
+		std::stringstream ss;
+		while(!all_done)
+		{
+			ss << startString << " point " << currentPoint << " of " << totalPoints;;
+			std::string status = ss.str();
+			spaces = status.length();
+			clear_line(spaces);
+			std::cout << "\r" << status << std::flush;
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
+	};
+	std::thread progress_thread(show_progress);
+	progress_thread.join();*/
+
+	std::thread render_thread_1(render_1);
+	std::thread render_thread_2(render_2);
+	render_thread_1.join();
+	render_thread_2.join();
+}
+#endif
 
 void create_directory(const std::string& dirname)
 {
@@ -1032,6 +1329,7 @@ int main(int argc, char** argv)
 
 	argp.add("-c", 0);
 	argp.add("-cm", 1.0);
+	argp.add("-clog", false);
 	argp.add("-e", 2.0);
 	argp.add("-el", 4.0);
 	argp.add("-i", 1024);
@@ -1057,21 +1355,22 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	color_opt.disable_fancy = argp.get_bool("-df");
-	color_opt.smooth = argp.get_bool("-s");
-	fractal_opt.single = argp.get_bool("-S");
+	color_opt.disable_fancy		= argp.get_bool("-df");
+	color_opt.smooth			= argp.get_bool("-s");
+	fractal_opt.single			= argp.get_bool("-S");
 
-	color_opt.method = argp.get_int("-c");
-
+	color_opt.method			= argp.get_uint("-c");
 	color_opt.multiplier		= argp.get_double("-cm");
+	color_opt.use_log			= argp.get_bool("-clog");
+
 	fractal_opt.exponent		= argp.get_double("-e");
 	fractal_opt.escape_limit	= argp.get_double("-el");
-	max_iterations				= argp.get_int("-i");
-	fractal_opt.juliaA				= argp.get_double("-jx");
-	fractal_opt.juliaB				= argp.get_double("-jy");
-	pCheck						= argp.get_int("-pc");
-	width_px					= height_px = argp.get_int("-r");
-	width_px					= std::round(width_px * argp.get_double("-wm"));
+	max_iterations				= argp.get_uint("-i");
+	fractal_opt.juliaA			= argp.get_double("-jx");
+	fractal_opt.juliaB			= argp.get_double("-jy");
+	pCheck						= argp.get_uint("-pc");
+	width_px = height_px		= argp.get_uint("-r");
+	width_px					= static_cast<uint_fast32_t>(std::round(width_px * argp.get_double("-wm")));
 	try
 	{
 		fractal_opt.type = string_to_fractal_type(argp.get_string("-t").c_str());
@@ -1114,17 +1413,11 @@ int main(int argc, char** argv)
 	create_directory(ss.str());
 
 	// if Ctrl+C is pressed, stop iteration and save partial image
-	struct sigaction sigIntHandler;
-	sigIntHandler.sa_handler = [](int s)
+	auto ctrl_c_handler = [](int signal)
 	{
-		if(s == 2) // CTRL + C
-		{
-			cancel = true;
-		}
+		cancel = true;
 	};
-	sigemptyset(&sigIntHandler.sa_mask);
-	sigIntHandler.sa_flags = 0;
-	sigaction(SIGINT, &sigIntHandler, NULL);
+	signal(SIGINT, ctrl_c_handler);
 
 	createFractal();
 

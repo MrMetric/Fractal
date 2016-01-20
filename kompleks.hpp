@@ -1,14 +1,11 @@
 #pragma once
+
 #include <iostream>
 #include <cmath>
 #include <complex>
 
-#define kompleks_type double
-
-constexpr inline kompleks_type square(kompleks_type x)
-{
-	return x*x;
-}
+// note to future me: change _ld if changing this!
+#define kompleks_type long double
 
 struct kompleks;
 constexpr kompleks operator /(const kompleks& x, const kompleks_type y);
@@ -17,39 +14,40 @@ struct kompleks
 	constexpr kompleks(const kompleks_type real = 0, const kompleks_type imag = 0) : real(real), imag(imag) {}
 	constexpr kompleks(const std::complex<kompleks_type>& z) : real(std::real(z)), imag(std::imag(z)) {}
 
-	kompleks_type real, imag;
+	kompleks_type real;
+	kompleks_type imag;
 
-	constexpr kompleks_type norm()
+	constexpr kompleks_type norm() const
 	{
 		return real*real + imag*imag;
 	}
 
-	constexpr kompleks_type abs()
+	constexpr kompleks_type abs() const
 	{
-		return sqrt(norm());
+		return std::sqrt(norm()); // TODO: more precision
 	}
 
-	constexpr kompleks conjugate()
+	constexpr kompleks conjugate() const
 	{
 		return kompleks(real, -imag);
 	}
 
-	constexpr kompleks reciprocal()
+	constexpr kompleks reciprocal() const
 	{
-		return conjugate() / square(abs());
+		return conjugate() / norm();
 	}
 
-	constexpr kompleks_type arg()
+	constexpr kompleks_type arg() const
 	{
-		return atan2(imag, real);
+		return std::atan2(imag, real);
 	}
 
-	constexpr kompleks swap_xy()
+	constexpr kompleks swap_xy() const
 	{
 		return kompleks(imag, real);
 	}
 
-	constexpr std::complex<kompleks_type> to_std()
+	constexpr std::complex<kompleks_type> to_std() const
 	{
 		return std::complex<kompleks_type>(real, imag);
 	}
@@ -97,8 +95,8 @@ constexpr kompleks operator -(const kompleks& x, const kompleks_type y)
 constexpr kompleks operator -(const kompleks_type y, const kompleks& x)
 {
 	/*
-	x - (a + bi)
-	(x - a) - bi
+	y - (a + bi)
+	(y - a) - bi
 	*/
 	return kompleks(y - x.real, -x.imag);
 }
@@ -176,14 +174,16 @@ const kompleks operator ^(kompleks x, kompleks_type y)
 	}
 
 	// my slow solution
-	/*bool odd = n % 2;
+	/*
+	bool odd = n % 2;
 	int left = n / 2;
 	kompleks result = (x^left);
 	result = result*result;
 	if(odd)
 	{
 		result = result*x;
-	}*/
+	}
+	*/
 
 	// copied from std::complex
 	kompleks result = (n % 2) ? x : 1;
@@ -207,5 +207,10 @@ kompleks sinh(const kompleks& z)
 {
 	const kompleks_type x = z.real;
 	const kompleks_type y = z.imag;
-	return kompleks(sinh(x) * cos(y), cosh(x) * sin(y));
+	return kompleks(std::sinh(x) * std::cos(y), std::cosh(x) * std::sin(y));
+}
+
+kompleks cos(const kompleks& z)
+{
+	return kompleks(std::cos(z.real) * std::cosh(z.imag), -1 * std::sin(z.real) * std::sinh(z.imag));
 }

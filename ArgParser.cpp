@@ -76,17 +76,27 @@ void ArgParser::parse(int argc, char** argv)
 	}
 }
 
-const bool ArgParser::get_bool(const std::string& argname)
+bool ArgParser::get_bool(const std::string& argname)
 {
 	return this->flags[argname];
 }
 
-const int ArgParser::get_int(const std::string& argname)
+int ArgParser::get_int(const std::string& argname)
 {
 	return this->ints[argname];
 }
 
-const double ArgParser::get_double(const std::string& argname)
+unsigned int ArgParser::get_uint(const std::string& argname)
+{
+	int i = this->ints[argname];
+	if(i < 0)
+	{
+		throw std::runtime_error("unsigned argument '" + argname + "' is negative (" + std::to_string(i) + ")");
+	}
+	return static_cast<unsigned int>(i);
+}
+
+double ArgParser::get_double(const std::string& argname)
 {
 	return this->doubles[argname];
 }
