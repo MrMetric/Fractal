@@ -130,12 +130,15 @@ void HSV2RGB(kompleks_type h, kompleks_type s, kompleks_type v, uint_fast8_t* ds
 
 	switch(index)
 	{
-		case 0: dst[0] = v; dst[1] = t; dst[2] = p; break;
-		case 1: dst[0] = q; dst[1] = v; dst[2] = p; break;
-		case 2: dst[0] = p; dst[1] = v; dst[2] = t; break;
-		case 3: dst[0] = p; dst[1] = q; dst[2] = v; break;
-		case 4: dst[0] = t; dst[1] = p; dst[2] = v; break;
-		case 5: dst[0] = v; dst[1] = p; dst[2] = q; break;
+		#define kast(x) static_cast<uint_fast8_t>(x)
+		case 0: dst[0] = kast(v); dst[1] = kast(t); dst[2] = kast(p); break;
+		case 1: dst[0] = kast(q); dst[1] = kast(v); dst[2] = kast(p); break;
+		case 2: dst[0] = kast(p); dst[1] = kast(v); dst[2] = kast(t); break;
+		case 3: dst[0] = kast(p); dst[1] = kast(q); dst[2] = kast(v); break;
+		case 4: dst[0] = kast(t); dst[1] = kast(p); dst[2] = kast(v); break;
+		case 5: dst[0] = kast(v); dst[1] = kast(p); dst[2] = kast(q); break;
+		#undef kast
+		default: throw std::runtime_error("index must be in range [0, 5], but is " + std::to_string(index));
 	}
 }
 
