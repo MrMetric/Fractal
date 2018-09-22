@@ -1,5 +1,3 @@
-bin
-obj
-old
-Fractal.layout
-Fractal.depend
+*.o
+.sconsign.dblite
+fractal
