@@ -37,12 +37,12 @@ std::complex<kompleks_type> kompleks::to_std() const
 
 
 
-bool operator ==(const kompleks& x, const kompleks& y)
+bool operator==(const kompleks& x, const kompleks& y)
 {
 	return x.real == y.real && x.imag == y.imag;
 }
 
-std::ostream& operator <<(std::ostream& o, const kompleks& x)
+std::ostream& operator<<(std::ostream& o, const kompleks& x)
 {
 	if(x.imag < 0)
 	{
@@ -55,28 +55,28 @@ std::ostream& operator <<(std::ostream& o, const kompleks& x)
 }
 
 // + real
-kompleks operator +(const kompleks& x, const kompleks_type y)
+kompleks operator+(const kompleks& x, const kompleks_type y)
 {
 	return kompleks(x.real + y, x.imag);
 }
-kompleks operator +(const kompleks_type y, const kompleks& x)
+kompleks operator+(const kompleks_type y, const kompleks& x)
 {
 	return x + y;
 }
 
 // + complex
-kompleks operator +(const kompleks& x, const kompleks& y)
+kompleks operator+(const kompleks& x, const kompleks& y)
 {
 	return kompleks(x.real + y.real, x.imag + y.imag);
 }
 
 // - real
-kompleks operator -(const kompleks& x, const kompleks_type y)
+kompleks operator-(const kompleks& x, const kompleks_type y)
 {
 	return kompleks(x.real - y, x.imag);
 }
 // real -
-kompleks operator -(const kompleks_type y, const kompleks& x)
+kompleks operator-(const kompleks_type y, const kompleks& x)
 {
 	/*
 	y - (a + bi)
@@ -86,23 +86,23 @@ kompleks operator -(const kompleks_type y, const kompleks& x)
 }
 
 // - complex
-kompleks operator -(const kompleks& x, const kompleks& y)
+kompleks operator-(const kompleks& x, const kompleks& y)
 {
 	return kompleks(x.real - y.real, x.imag - y.imag);
 }
 
 // * real
-kompleks operator *(const kompleks& x, const kompleks_type y)
+kompleks operator*(const kompleks& x, const kompleks_type y)
 {
 	return kompleks(x.real * y, x.imag * y);
 }
-kompleks operator *(const kompleks_type y, const kompleks& x)
+kompleks operator*(const kompleks_type y, const kompleks& x)
 {
 	return x * y;
 }
 
 // * complex
-kompleks operator *(const kompleks& x, const kompleks& y)
+kompleks operator*(const kompleks& x, const kompleks& y)
 {
 	/*
 	x = a + bi
@@ -118,33 +118,33 @@ kompleks operator *(const kompleks& x, const kompleks& y)
 }
 
 // / real
-kompleks operator /(const kompleks& x, const kompleks_type y)
+kompleks operator/(const kompleks& x, const kompleks_type y)
 {
 	return kompleks(x.real / y, x.imag / y);
 }
 // real /
-kompleks operator /(const kompleks_type y, const kompleks& x)
+kompleks operator/(const kompleks_type y, const kompleks& x)
 {
 	return y * x.reciprocal();
 }
 
 // / complex
-kompleks operator /(const kompleks& x, const kompleks& y)
+kompleks operator/(const kompleks& x, const kompleks& y)
 {
 	return x * y.reciprocal();
 }
 
-kompleks operator ^(kompleks x, kompleks_type y)
+kompleks operator^(kompleks x, kompleks_type y)
 {
 	int n = static_cast<int>(y);
 	if(n != y)
 	{
-		return pow(x.to_std(), y);
+		return kompleks(pow(x.to_std(), y));
 	}
 	//return pow(x.to_std(), (int)y);
 	if(n == 0)
 	{
-		return 1;
+		return kompleks(1, 0);
 	}
 	if(x == 0 || n == 1)
 	{
@@ -170,13 +170,13 @@ kompleks operator ^(kompleks x, kompleks_type y)
 	*/
 
 	// copied from std::complex
-	kompleks result = (n % 2) ? x : 1;
+	kompleks result = (n % 2 == 0) ? kompleks(1, 0) : x;
 	while(n >>= 1)
 	{
-		x = x*x;
+		x *= x;
 		if(n % 2)
 		{
-			result = result*x;
+			result *= x;
 		}
 	}
 

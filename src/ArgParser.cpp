@@ -1,49 +1,50 @@
 #include "ArgParser.hpp"
-#include <exception>
+
 #include <stdexcept>
-#include <sstream>
-//#include <iostream>
+#include <string>
+#include <utility>
+
+using std::string;
 
 ArgParser::ArgParser()
 {
-	//ctor
 }
 
-void ArgParser::add(const std::string& argname, bool value)
+void ArgParser::add(const string& name, const bool value)
 {
-	this->flags_default[argname] = value;
-	this->flags[argname] = value;
+	this->flags_default.emplace(name, value);
+	this->flags.emplace(name, value);
 }
 
-void ArgParser::add(const std::string& argname, int value)
+void ArgParser::add(const string& name, const int value)
 {
-	this->ints[argname] = value;
+	this->ints.emplace(name, value);
 }
 
-void ArgParser::add(const std::string& argname, double value)
+void ArgParser::add(const string& name, const long double value)
 {
-	this->doubles[argname] = value;
+	this->lfloats.emplace(name, value);
 }
 
-void ArgParser::add(const std::string& argname, const char* value)
+void ArgParser::add(const string& name, const char* value)
 {
-	this->add(argname, std::string(value));
+	this->strings.emplace(name, value);
 }
 
-void ArgParser::add(const std::string& argname, const std::string& value)
+void ArgParser::add(const string& name, string value)
 {
-	this->strings[argname] = value;
+	this->strings.emplace(name, std::move(value));
 }
 
-void ArgParser::parse(int argc, char** argv)
+void ArgParser::parse(const int argc, char** const argv)
 {
 	for(int arg = 1; arg < argc; ++arg)
 	{
-		std::string argument(argv[arg]);
+		const string argument = argv[arg];
 
 		if(this->flags.find(argument) != this->flags.end())
 		{
-			this->flags[argument] = !this->flags_default[argument];
+			this->flags.insert_or_assign(argument, !this->flags_default[argument]);
 			continue;
 		}
 
@@ -52,23 +53,23 @@ void ArgParser::parse(int argc, char** argv)
 		{
 			throw std::runtime_error("No value given for " + argument);
 		}
-		std::string value = argv[arg];
+		const string value = argv[arg];
 
 		if(this->ints.find(argument) != this->ints.end())
 		{
-			this->ints[argument] = atoi(value.c_str());
+			this->ints.insert_or_assign(argument, std::stoi(value));
 			continue;
 		}
 
-		if(this->doubles.find(argument) != this->doubles.end())
+		if(this->lfloats.find(argument) != this->lfloats.end())
 		{
-			this->doubles[argument] = atof(value.c_str());
+			this->lfloats.insert_or_assign(argument, std::stold(value));
 			continue;
 		}
 
 		if(this->strings.find(argument) != this->strings.end())
 		{
-			this->strings[argument] = value;
+			this->strings.insert_or_assign(argument, value);
 			continue;
 		}
 
@@ -76,32 +77,32 @@ void ArgParser::parse(int argc, char** argv)
 	}
 }
 
-bool ArgParser::get_bool(const std::string& argname)
+bool ArgParser::get_bool(const string& name) const
 {
-	return this->flags[argname];
+	return this->flags.at(name);
 }
 
-int ArgParser::get_int(const std::string& argname)
+int ArgParser::get_int(const string& name) const
 {
-	return this->ints[argname];
+	return this->ints.at(name);
 }
 
-unsigned int ArgParser::get_uint(const std::string& argname)
+unsigned int ArgParser::get_uint(const string& name) const
 {
-	int i = this->ints[argname];
+	const int i = this->ints.at(name);
 	if(i < 0)
 	{
-		throw std::runtime_error("unsigned argument '" + argname + "' is negative (" + std::to_string(i) + ")");
+		throw std::runtime_error("unsigned argument '" + name + "' is negative (" + std::to_string(i) + ")");
 	}
 	return static_cast<unsigned int>(i);
 }
 
-double ArgParser::get_double(const std::string& argname)
+long double ArgParser::get_lfloat(const string& name) const
 {
-	return this->doubles[argname];
+	return this->lfloats.at(name);
 }
 
-const std::string ArgParser::get_string(const std::string& argname)
+string ArgParser::get_string(const string& name) const
 {
-	return this->strings[argname];
+	return this->strings.at(name);
 }
